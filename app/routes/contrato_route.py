@@ -4,11 +4,11 @@ from app.controllers import contrato_controller
 contrato_bp = Blueprint("contratos", __name__)
 
 @contrato_bp.route("/", methods=["POST"])
-def criar():
+def criar(): 
     try:
         data = request.get_json()
         contrato = contrato_controller.criar_contrato(data)
-        return jsonify({
+        return jsonify({ 
             "numero_contrato": contrato.numero_contrato,
             "cliente_id": contrato.cliente_id,
             "vencimento": contrato.vencimento.strftime("%Y-%m-%d"),

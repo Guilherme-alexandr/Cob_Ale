@@ -12,7 +12,7 @@ def criar():
         return jsonify(resultado), 201
 
     except Exception as e:
-        import traceback
+        import traceback 
         traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
 

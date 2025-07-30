@@ -72,7 +72,7 @@ def obter_acordo(id):
     return Acordo.query.get(id)
 
 def atualizar_acordo(id, data):
-    acordo = Acordo.query.get(id)
+    acordo = Acordo.query.get(id) 
     if not acordo:
         return None
     if "tipo_pagamento" in data:

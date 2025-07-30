@@ -9,7 +9,7 @@ def gerar_numero_contrato():
     proximo = int(ultimo.numero_contrato) + 1
     return f"{proximo:06d}"
 
-def criar_contrato(data):
+def criar_contrato(data): 
     
     numero = gerar_numero_contrato()
     try:
