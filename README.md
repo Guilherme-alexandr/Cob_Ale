@@ -23,7 +23,6 @@
 {
   "contrato_id": "000001",
   "tipo_pagamento": "parcelado",
-  "qtd_parcelas": 6,
-  "valor_total": 600.00,
-  "vencimento": "2025-07-10"
+  "qtd_parcelas": 4,
+  "vencimento": "2025-08-10"
 }
