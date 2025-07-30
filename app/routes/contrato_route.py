@@ -11,7 +11,7 @@ def criar():
         return jsonify({
             "numero_contrato": contrato.numero_contrato,
             "cliente_id": contrato.cliente_id,
-            "data_emissao": contrato.data_emissao.strftime("%Y-%m-%d %H:%M:%S"),
+            "vencimento": contrato.vencimento.strftime("%Y-%m-%d"),
             "valor_total": contrato.valor_total,
             "filial": contrato.filial
         }), 201
@@ -26,7 +26,7 @@ def listar():
     return jsonify([{
         "numero_contrato": c.numero_contrato,
         "cliente_id": c.cliente_id,
-        "data_emissao": c.data_emissao.strftime("%Y-%m-%d %H:%M:%S"),
+        "vencimento": c.vencimento.strftime("%Y-%m-%d"),
         "valor_total": c.valor_total,
         "filial": c.filial
     } for c in contratos])
@@ -39,7 +39,7 @@ def obter(numero_contrato):
     return jsonify({
         "numero_contrato": contrato.numero_contrato,
         "cliente_id": contrato.cliente_id,
-        "data_emissao": contrato.data_emissao.strftime("%Y-%m-%d %H:%M:%S"),
+        "vencimento": contrato.vencimento.strftime("%Y-%m-%d"),
         "valor_total": contrato.valor_total,
         "filial": contrato.filial
     })
@@ -53,7 +53,7 @@ def atualizar(numero_contrato):
     return jsonify({
         "numero_contrato": contrato.numero_contrato,
         "cliente_id": contrato.cliente_id,
-        "data_emissao": contrato.data_emissao.strftime("%Y-%m-%d %H:%M:%S"),
+        "vencimento": contrato.vencimento.strftime("%Y-%m-%d"),
         "valor_total": contrato.valor_total,
         "filial": contrato.filial
     })
@@ -73,7 +73,7 @@ def buscar_por_cliente(cliente_id):
     return jsonify([{
         "numero_contrato": c.numero_contrato,
         "cliente_id": c.cliente_id,
-        "data_emissao": c.data_emissao.strftime("%Y-%m-%d %H:%M:%S"),
+        "vencimento": c.vencimento.strftime("%Y-%m-%d"),
         "valor_total": c.valor_total,
         "filial": c.filial
     } for c in contratos])

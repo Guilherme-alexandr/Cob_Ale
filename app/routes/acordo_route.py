@@ -7,70 +7,67 @@ acordo_bp = Blueprint('acordos', __name__)
 def criar():
     try:
         data = request.get_json()
-        acordo = acordo_controller.criar(data)
+        resultado = acordo_controller.criar_acordo(data)
 
-        return jsonify({
-            "id": acordo.id,
-            "contrato_id": acordo.contrato_id,
-            "tipo_pagamento": acordo.tipo_pagamento,
-            "qtd_parcelas": acordo.qtd_parcelas,
-            "valor_total": acordo.valor_total,
-            "vencimento": acordo.vencimento.strftime("%Y-%m-%d"),
-            "status": acordo.status
-        }), 201
+        return jsonify(resultado), 201
 
-    except ValueError as e:
-        return jsonify({"erro": str(e)}), 400
     except Exception as e:
-        return jsonify({"erro": "Erro interno ao criar acordo."}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
+
     
 @acordo_bp.route("/", methods=["GET"])
 def listar():
-    acordos = acordo_controller.listar()
-    return jsonify([{
-        "id": a.id,
-        "contrato_id": a.contrato_id,
-        "tipo_pagamento": a.tipo_pagamento,
-        "qtd_parcelas": a.qtd_parcelas,
-        "valor_total": a.valor_total,
-        "vencimento": a.vencimento.strftime("%Y-%m-%d"),
-        "status": a.status
-    } for a in acordos])
+    try:
+        acordos = acordo_controller.listar_acordos()
+        return jsonify([acordo.to_dict() for acordo in acordos]), 200
 
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
+    
 @acordo_bp.route("/<int:id>", methods=["GET"])
-def obter_acordo(id):
-    acordo = acordo_controller.obter_acordo(id)
-    if not acordo:
-        return jsonify({"error": "Acordo não encontrado"}), 404
-    return jsonify({
-        "id": acordo.id,
-        "contrato_id": acordo.contrato_id,
-        "tipo_pagamento": acordo.tipo_pagamento,
-        "qtd_parcelas": acordo.qtd_parcelas,
-        "valor_total": acordo.valor_total,
-        "vencimento": acordo.vencimento.strftime("%Y-%m-%d"),
-        "status": acordo.status
-    })
+def obter(id):
+    try:
+        acordo = acordo_controller.obter_acordo(id)
+        if not acordo:
+            return jsonify({"erro": "Acordo não encontrado"}), 404
 
+        return jsonify(acordo.to_dict()), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
+    
 @acordo_bp.route("/<int:id>", methods=["PUT"])
-def atualizar_acordo(id):
-    data = request.get_json()
-    acordo = acordo_controller.atualizar_acordo(id, data)
-    if not acordo:
-        return jsonify({"error": "Acordo não encontrado"}), 404
-    return jsonify({
-        "id": acordo.id,
-        "contrato_id": acordo.contrato_id,
-        "tipo_pagamento": acordo.tipo_pagamento,
-        "qtd_parcelas": acordo.qtd_parcelas,
-        "valor_total": acordo.valor_total,
-        "vencimento": acordo.vencimento.strftime("%Y-%m-%d"),
-        "status": acordo.status
-    })
+def atualizar(id):
+    try:
+        data = request.get_json()
+        resultado = acordo_controller.atualizar_acordo(id, data)
+        if not resultado:
+            return jsonify({"erro": "Acordo não encontrado"}), 404
+
+        return jsonify(resultado.to_dict()), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
 
 @acordo_bp.route("/<int:id>", methods=["DELETE"])
-def deletar_acordo(id):
-    acordo = acordo_controller.deletar_acordo(id)
-    if not acordo:
-        return jsonify({"error": "Acordo não encontrado"}), 404
-    return jsonify({"message": "Acordo deletado com sucesso"}), 200
+def deletar(id):
+    try:
+        resultado = acordo_controller.deletar_acordo(id)
+        if not resultado:
+            return jsonify({"erro": "Acordo não encontrado"}), 404
+
+        return jsonify({"mensagem": "Acordo deletado com sucesso"}), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
+

@@ -1,45 +1,22 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Environment variables
 .env
-
-# Virtual environment folders
 venv/
 env/
 .venv/
-
-# SQLite database files
 *.sqlite3
 *.db
-
-# Flask instance folder (se existir)
 instance/
-
-# Pytest cache
 .pytest_cache/
-
-# VSCode settings
 .vscode/
-
-# macOS files
 .DS_Store
-
-# Logs
 *.log
-
-# Byte-compiled / optimized / DLL files
 *.pyc
 *.pyo
 *.pyd
-
-# Coverage reports
 htmlcov/
 .coverage
-
-# IDE or Editor folders
 .idea/
 *.sublime-project
 *.sublime-workspace

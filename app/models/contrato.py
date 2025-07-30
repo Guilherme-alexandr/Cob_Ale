@@ -6,7 +6,7 @@ class Contrato(db.Model):
 
     numero_contrato = db.Column(db.String(6), primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    data_emissao = db.Column(db.DateTime, default=datetime.utcnow)
+    vencimento = db.Column(db.DateTime, default=datetime.utcnow)
     valor_total = db.Column(db.Float, nullable=False)
     filial = db.Column(db.String(100), nullable=False)
 

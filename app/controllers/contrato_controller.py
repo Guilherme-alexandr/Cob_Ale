@@ -1,4 +1,5 @@
 from app.database import db
+from datetime import datetime
 from app.models.contrato import Contrato
 
 def gerar_numero_contrato():
@@ -11,11 +12,16 @@ def gerar_numero_contrato():
 def criar_contrato(data):
     
     numero = gerar_numero_contrato()
+    try:
+        vencimento = datetime.strptime(data["vencimento"], "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Data de vencimento inválida. Use o formato YYYY-MM-DD.")
     contrato = Contrato(
         numero_contrato=numero,
         cliente_id=data["cliente_id"],
         valor_total=data["valor_total"],
-        filial=data["filial"]
+        filial=data["filial"],
+        vencimento=vencimento
     )
     db.session.add(contrato)
     db.session.commit()

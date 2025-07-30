@@ -14,3 +14,14 @@ class Acordo(db.Model):
     status = db.Column(db.String(20), default="em andamento")
 
     contrato = db.relationship("Contrato", backref=db.backref("acordo", uselist=False))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "contrato_id": self.contrato_id,
+            "tipo_pagamento": self.tipo_pagamento,
+            "qtd_parcelas": self.qtd_parcelas,
+            "valor_total": self.valor_total,
+            "vencimento": self.vencimento.strftime("%Y-%m-%d"),
+            "status": self.status
+        }
