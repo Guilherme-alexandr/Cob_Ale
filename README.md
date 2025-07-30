@@ -132,9 +132,3 @@ Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (a
   "qtd_parcelas": 4,
   "vencimento": "2025-08-10"
 }
-```
-
-## 📌 Autor
-
-Desenvolvido por **Guilherme Alexandre**  
-💻 [GitHub](https://github.com/Guilherme-alexandr)
