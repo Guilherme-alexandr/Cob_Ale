@@ -7,7 +7,7 @@ contrato_ns = Namespace("contratos", description="Operações com contratos")
 contrato_model = contrato_ns.model("Contrato", {
     "numero_contrato": fields.String(readOnly=True, description="Número do contrato (6 dígitos)"),
     "cliente_id": fields.Integer(required=True, description="ID do cliente", default=1),
-    "vencimento": fields.Date(required=True, description="Data de vencimento", default="2024-12-05"),
+    "vencimento": fields.Date(required=True, description="Data de vencimento", default="2025-05-30"),
     "valor_total": fields.Float(required=True, description="Valor total do contrato", default=450.75),
     "filial": fields.String(required=True, description="Filial ou loja do débito", default="Loja Central")
 })
