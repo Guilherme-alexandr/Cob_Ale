@@ -18,7 +18,7 @@ def atualizar_cliente(id, data):
     if not cliente:
         return None
     for key, value in data.items():
-        setattr(cliente, key, value)
+        setattr(cliente, key, value) 
     db.session.commit()
     return cliente
 

@@ -1,0 +1,69 @@
+from flask import request
+from flask_restx import Namespace, Resource, fields
+from app.controllers import cliente_controller
+
+cliente_ns = Namespace("clientes", description="Operações com clientes")
+
+cliente_model = cliente_ns.model("Cliente", {
+    "id": fields.Integer(readOnly=True),
+    "nome": fields.String(required=True, description="Nome do cliente", default="João da Silva"),
+    "cpf": fields.String(required=True, description="CPF do cliente", default="12345678901"),
+    "numero": fields.String(required=True, description="Número de telefone do cliente", default="11999998888"),
+    "email": fields.String(required=True, description="Email do cliente", default="joao.silva@email.com")
+})
+
+
+@cliente_ns.route("/")
+class ClienteList(Resource):
+    @cliente_ns.marshal_list_with(cliente_model)
+    def get(self):
+        """Listar todos os clientes"""
+        return cliente_controller.listar_clientes()
+
+    @cliente_ns.expect(cliente_model)
+    @cliente_ns.marshal_with(cliente_model, code=201)
+    def post(self):
+        """Criar um novo cliente"""
+        data = request.get_json()
+        return cliente_controller.criar_cliente(data), 201
+
+
+@cliente_ns.route("/<int:id>")
+@cliente_ns.param("id", "ID do cliente")
+class ClienteDetail(Resource):
+    @cliente_ns.marshal_with(cliente_model)
+    def get(self, id):
+        """Obter cliente por ID"""
+        cliente = cliente_controller.obter_cliente(id)
+        if not cliente:
+            cliente_ns.abort(404, "Cliente não encontrado")
+        return cliente
+
+    @cliente_ns.expect(cliente_model)
+    @cliente_ns.marshal_with(cliente_model)
+    def put(self, id):
+        """Atualizar dados do cliente"""
+        data = request.get_json()
+        cliente = cliente_controller.atualizar_cliente(id, data)
+        if not cliente:
+            cliente_ns.abort(404, "Cliente não encontrado")
+        return cliente
+
+    def delete(self, id):
+        """Deletar cliente"""
+        cliente = cliente_controller.deletar_cliente(id)
+        if not cliente:
+            cliente_ns.abort(404, "Cliente não encontrado")
+        return {"mensagem": "Cliente deletado com sucesso"}, 204
+
+
+@cliente_ns.route("/buscar_por_cpf/<string:cpf>")
+@cliente_ns.param("cpf", "CPF do cliente")
+class ClientePorCPF(Resource):
+    @cliente_ns.marshal_with(cliente_model)
+    def get(self, cpf):
+        """Buscar cliente pelo CPF"""
+        cliente = cliente_controller.buscar_cliente_por_cpf(cpf)
+        if not cliente:
+            cliente_ns.abort(404, "Cliente não encontrado")
+        return cliente

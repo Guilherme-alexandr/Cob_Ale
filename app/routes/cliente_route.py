@@ -72,6 +72,3 @@ def buscar_por_cpf(cpf):
         "numero": cliente.numero,
         "email": cliente.email
     })
-
-
-
