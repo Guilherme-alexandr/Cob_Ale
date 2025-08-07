@@ -42,6 +42,20 @@ def obter(id):
         import traceback
         traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
+
+@acordo_bp.route("/buscar_por_contrato/<string:numero_contrato>", methods=["GET"])
+def obter_por_contrato(numero_contrato):
+    try:
+        acordo = acordo_controller.obter_acordo_por_contrato(numero_contrato)
+        if not acordo:
+            return jsonify({"erro": "Acordo não encontrado"}), 404
+
+        return jsonify(acordo.to_dict()), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
     
 @acordo_bp.route("/<int:id>", methods=["PUT"])
 def atualizar(id):

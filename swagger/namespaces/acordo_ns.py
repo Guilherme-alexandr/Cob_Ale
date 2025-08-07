@@ -1,6 +1,7 @@
-from flask import request
+from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from app.controllers import acordo_controller
+from app.controllers.acordo_controller import calcular_simulacao
 
 acordo_ns = Namespace("acordos", description="Operações com acordos")
 
@@ -66,3 +67,39 @@ class AcordoDetail(Resource):
         if not resultado:
             acordo_ns.abort(404, "Acordo não encontrado")
         return {"mensagem": "Acordo deletado com sucesso"}, 204
+
+@acordo_ns.route("/buscar_por_contrato/<string:numero_contrato>")
+@acordo_ns.param("numero_contrato", "Número do contrato")
+class AcordoByContrato(Resource):
+    def get(self, numero_contrato):
+        """Obter acordo pelo número do contrato"""
+        acordo = acordo_controller.obter_acordo_por_contrato(numero_contrato)
+        if not acordo:
+            return {"erro": "Acordo não encontrado"}, 404
+        return acordo.to_dict(), 200
+
+# ✅ Substituído por uma classe Resource
+@acordo_ns.route("/simular")
+class SimulacaoAcordo(Resource):
+    def post(self):
+        """Simular acordo com base nos parâmetros fornecidos"""
+        try:
+            payload = request.get_json()
+            if not payload:
+                raise ValueError("Payload não fornecido.")
+
+            campos_obrigatorios = ["valor_original", "dias_em_atraso", "tipo_pagamento"]
+            for campo in campos_obrigatorios:
+                if campo not in payload:
+                    raise ValueError(f"Campo obrigatório '{campo}' ausente.")
+
+            if payload.get("tipo_pagamento") == "parcelado" and "quantidade_parcelas" not in payload:
+                raise ValueError("Campo 'quantidade_parcelas' é obrigatório para parcelamento.")
+
+            resultado = calcular_simulacao(payload)
+            return jsonify(resultado), 200
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify({"erro": str(e)}), 400

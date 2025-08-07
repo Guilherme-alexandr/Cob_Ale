@@ -3,6 +3,7 @@ from app.database import db
 from app.models.acordo import Acordo
 from app.models.contrato import Contrato
 from calculadora import calcular
+import json
 
 def calcular_dias_atraso(vencimento):
     hoje = datetime.utcnow()
@@ -37,7 +38,8 @@ def criar_acordo(data):
         qtd_parcelas=qtd_parcelas,
         valor_total=resultado_calculo["valor_final"],
         vencimento=datetime.strptime(data["vencimento"], "%Y-%m-%d"),
-        status="em andamento"
+        status="em andamento",
+        parcelamento_json=json.dumps(resultado_calculo.get("parcelamento")) if resultado_calculo.get("parcelamento") else None
     )
 
     db.session.add(acordo)
@@ -58,6 +60,9 @@ def listar_acordos():
 
 def obter_acordo(id):
     return Acordo.query.get(id)
+
+def obter_acordo_por_contrato(numero_contrato):
+    return Acordo.query.filter_by(contrato_id=numero_contrato).first()
 
 def atualizar_acordo(id, data):
     acordo = Acordo.query.get(id) 
