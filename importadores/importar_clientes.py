@@ -10,7 +10,7 @@ def importar_clientes_docx(caminho_arquivo):
     for tabela in doc.tables:
         for i, linha in enumerate(tabela.rows):
             if i == 0:
-                continue  # Pular cabeçalho
+                continue
 
             nome = linha.cells[0].text.strip()
             cpf = linha.cells[1].text.strip()
@@ -40,3 +40,6 @@ if __name__ == "__main__":
         importar_clientes_docx(
             "C:/Users/guilh/OneDrive/Documentos/clientes_exemplo.docx"
         )
+
+        
+# python -m importadores.importar_clientes

@@ -34,7 +34,6 @@ class AcordoList(Resource):
         data = request.get_json()
         resultado = acordo_controller.criar_acordo(data)
         acordo = resultado["acordo"]
-        # Construir a resposta com o modelo esperado
         response = acordo.copy()
         response["parcelamento"] = acordo.get("parcelamento", None)
         return response, 201

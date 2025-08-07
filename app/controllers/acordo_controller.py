@@ -1,28 +1,13 @@
-import requests
 from datetime import datetime
 from app.database import db
 from app.models.acordo import Acordo
 from app.models.contrato import Contrato
+from calculadora import calcular
 
 def calcular_dias_atraso(vencimento):
     hoje = datetime.utcnow()
     atraso = (hoje - vencimento).days
     return max(atraso, 0)
-
-def chamar_calculadora(valor_original, dias_em_atraso, tipo_pagamento, qtd_parcelas):
-    payload = {
-        "valor_original": valor_original,
-        "dias_em_atraso": dias_em_atraso,
-        "tipo_pagamento": tipo_pagamento,
-        "quantidade_parcelas": qtd_parcelas
-    }
-
-    response = requests.post("http://127.0.0.1:5001/calcular", json=payload)
-
-    if response.status_code != 200:
-        raise ValueError("Erro ao calcular valor do acordo.")
-
-    return response.json()
 
 def criar_acordo(data):
     contrato = Contrato.query.filter_by(numero_contrato=data["contrato_id"]).first()
@@ -37,12 +22,14 @@ def criar_acordo(data):
 
     dias_em_atraso = calcular_dias_atraso(contrato.vencimento)
 
-    resultado_calculo = chamar_calculadora(
-        valor_original=contrato.valor_total,
-        dias_em_atraso=dias_em_atraso,
-        tipo_pagamento=tipo_pagamento,
-        qtd_parcelas=qtd_parcelas
-    )
+    resultado_calculo = calcular({
+    "valor_original": contrato.valor_total,
+    "dias_em_atraso": dias_em_atraso,
+    "tipo_pagamento": tipo_pagamento,
+    "quantidade_parcelas": qtd_parcelas,
+    "valor_entrada": data.get("valor_entrada")
+})
+
 
     acordo = Acordo(
         contrato_id=contrato.numero_contrato,
@@ -61,9 +48,10 @@ def criar_acordo(data):
             "id": acordo.id,
             "valor_final": resultado_calculo["valor_final"],
             "dias_em_atraso": dias_em_atraso,
-            "parcelamento": resultado_calculo.get("parcelamento", None)
+            "parcelamento": resultado_calculo.get("parcelamento")
         }
     }
+
 
 def listar_acordos():
     return Acordo.query.all()
@@ -89,6 +77,10 @@ def atualizar_acordo(id, data):
     db.session.commit()
     return acordo
 
+def calcular_simulacao(payload):
+    return calcular(payload)
+
+
 def deletar_acordo(id):
     acordo = Acordo.query.get(id)
     if not acordo:
@@ -97,3 +89,4 @@ def deletar_acordo(id):
     db.session.delete(acordo)
     db.session.commit()
     return True
+

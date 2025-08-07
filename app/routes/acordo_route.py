@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.controllers import acordo_controller
+from app.controllers.acordo_controller import calcular_simulacao
 
 acordo_bp = Blueprint('acordos', __name__)
 
@@ -71,3 +72,27 @@ def deletar(id):
         traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
 
+
+@acordo_bp.route('/simular', methods=['POST'])
+def simular_acordo():
+    try:
+        payload = request.get_json()
+
+        if not payload:
+            raise ValueError("Payload não fornecido.")
+
+        campos_obrigatorios = ["valor_original", "dias_em_atraso", "tipo_pagamento"]
+        for campo in campos_obrigatorios:
+            if campo not in payload:
+                raise ValueError(f"Campo obrigatório '{campo}' ausente.")
+
+        if payload.get("tipo_pagamento") == "parcelado" and "quantidade_parcelas" not in payload:
+            raise ValueError("Campo 'quantidade_parcelas' é obrigatório para parcelamento.")
+
+        resultado = calcular_simulacao(payload)
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 400
