@@ -11,8 +11,7 @@ CobAle é um sistema de cobrança desenvolvido em Flask como projeto pessoal dur
 - Flask SQLAlchemy
 - Flask Migrate
 - SQLite (padrão, pode ser adaptado para outros bancos)
-- Swagger (em desenvolvimento)
-- Microsserviço (para cálculo de negociação com base em juros, dias de atraso e tipo de pagamento)
+- Swagger (documentação finalizada)
 
 ---
 
@@ -34,29 +33,29 @@ Armazena os dados dos clientes devedores.
 ### 📄 Contrato
 Representa um débito associado a um cliente, podendo ser negociado.
 
-| Campo                  | Tipo     | Obrigatório | Observações                         |
-|------------------------|----------|-------------|-------------------------------------|
-| numero_contrato        | String   | Sim         | 6 dígitos, gerado automaticamente   |
-| cliente_id             | Integer  | Sim         | Relacionado ao cliente              |
-| data_emissao           | DateTime | Automático  |                                     |
-| data_vencimento_original | DateTime | Sim       | Define início do atraso             |
-| valor_total            | Float    | Sim         | Valor original do débito            |
-| filial                 | String   | Sim         | Nome da loja                        |
+| Campo                    | Tipo     | Obrigatório | Observações                         |
+|--------------------------|----------|-------------|-------------------------------------|
+| numero_contrato          | String   | Sim         | 6 dígitos, gerado automaticamente   |
+| cliente_id               | Integer  | Sim         | Relacionado ao cliente              |
+| data_emissao             | DateTime | Automático  |                                     |
+| data_vencimento_original | DateTime | Sim         | Define início do atraso             |
+| valor_total              | Float    | Sim         | Valor original do débito            |
+| filial                   | String   | Sim         | Nome da loja                        |
 
 ---
 
 ### 🤝 Acordo
 Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (até 24x).
 
-| Campo        | Tipo     | Observações                                 |
-|--------------|----------|---------------------------------------------|
-| id           | Integer  | Gerado automaticamente                      |
-| contrato_id  | String   | Referência ao contrato                      |
-| tipo_pagamento | String | "avista" ou "parcelado"                     |
-| qtd_parcelas | Integer  | Obrigatório se for parcelado                |
-| valor_total  | Float    | Já com juros e descontos aplicados          |
-| vencimento   | Date     | Data de vencimento do acordo ou 1ª parcela  |
-| status       | String   | em andamento, finalizado, quebrado          |
+| Campo          | Tipo     | Observações                                 |
+|----------------|----------|---------------------------------------------|
+| id             | Integer  | Gerado automaticamente                      |
+| contrato_id    | String   | Referência ao contrato                      |
+| tipo_pagamento | String   | "avista" ou "parcelado"                     |
+| qtd_parcelas   | Integer  | Obrigatório se for parcelado                |
+| valor_total    | Float    | Já com juros e descontos aplicados          |
+| vencimento     | Date     | Data de vencimento do acordo ou 1ª parcela  |
+| status         | String   | em andamento, finalizado, quebrado          |
 
 ---
 
@@ -93,13 +92,6 @@ Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (a
    flask run
    ```
 
-6. **Rode o microsserviço de cálculo**
-
-   ```bash
-   git clone https://github.com/Guilherme-alexandr/Calculadora_CobAle
-   cd Calculadora_CobAle
-   python app.py
-   ```
 ---
 
 ## 📥 Exemplos de Entrada (JSON)
@@ -132,3 +124,15 @@ Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (a
   "qtd_parcelas": 4,
   "vencimento": "2025-08-10"
 }
+```
+
+### 📊 Simular Acordo
+```json
+{
+  "valor_original": 2194.32,
+  "dias_em_atraso": 135,
+  "tipo_pagamento": "parcelado",
+  "quantidade_parcelas": 2,
+  "valor_entrada": 0
+}
+```
