@@ -13,6 +13,8 @@ class Acordo(db.Model):
     valor_total = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default="em andamento")
 
+    parcelamento_json = db.Column(db.Text, nullable=True)
+
     contrato = db.relationship("Contrato", backref=db.backref("acordo", uselist=False))
 
     def to_dict(self):

@@ -13,8 +13,8 @@ def importar_contratos_docx(caminho_arquivo):
             if i == 0:
                 continue
 
-            cliente_id = int(linha.cells[0].text.strip())
-            numero_contrato = linha.cells[1].text.strip()
+            numero_contrato = linha.cells[0].text.strip()
+            cliente_id = int(linha.cells[1].text.strip())
             vencimento_str = linha.cells[2].text.strip()
             valor_total = float(linha.cells[3].text.strip().replace(',', '.'))
             filial = linha.cells[4].text.strip()
@@ -46,3 +46,5 @@ if __name__ == "__main__":
         importar_contratos_docx(
             "C:/Users/guilh/OneDrive/Documentos/contratos_exemplo.docx"
         )
+
+# python -m importadores.importar_contratos

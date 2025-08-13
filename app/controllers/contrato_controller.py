@@ -53,3 +53,8 @@ def deletar_contrato(numero_contrato):
 def buscar_contratos_por_cliente(cliente_id):
     return Contrato.query.filter_by(cliente_id=cliente_id).all()
 
+def resetar_contratos():
+    db.session.query(Contrato).delete()
+    db.session.commit()
+    return True
+

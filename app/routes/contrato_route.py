@@ -78,3 +78,10 @@ def buscar_por_cliente(cliente_id):
         "filial": c.filial
     } for c in contratos])
 
+@contrato_bp.route("resetar", methods=["POST"])
+def resetar():
+    try:
+        contrato_controller.resetar_contratos()
+        return jsonify({"message": "Contratos resetados com sucesso"}), 200
+    except Exception as e:
+        return jsonify({"error": "Erro ao resetar contratos"}), 500

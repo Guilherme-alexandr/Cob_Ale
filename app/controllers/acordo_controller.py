@@ -1,28 +1,14 @@
-import requests
 from datetime import datetime
 from app.database import db
 from app.models.acordo import Acordo
 from app.models.contrato import Contrato
+from calculadora import calcular
+import json
 
 def calcular_dias_atraso(vencimento):
     hoje = datetime.utcnow()
     atraso = (hoje - vencimento).days
     return max(atraso, 0)
-
-def chamar_calculadora(valor_original, dias_em_atraso, tipo_pagamento, qtd_parcelas):
-    payload = {
-        "valor_original": valor_original,
-        "dias_em_atraso": dias_em_atraso,
-        "tipo_pagamento": tipo_pagamento,
-        "quantidade_parcelas": qtd_parcelas
-    }
-
-    response = requests.post("http://127.0.0.1:5001/calcular", json=payload)
-
-    if response.status_code != 200:
-        raise ValueError("Erro ao calcular valor do acordo.")
-
-    return response.json()
 
 def criar_acordo(data):
     contrato = Contrato.query.filter_by(numero_contrato=data["contrato_id"]).first()
@@ -37,12 +23,14 @@ def criar_acordo(data):
 
     dias_em_atraso = calcular_dias_atraso(contrato.vencimento)
 
-    resultado_calculo = chamar_calculadora(
-        valor_original=contrato.valor_total,
-        dias_em_atraso=dias_em_atraso,
-        tipo_pagamento=tipo_pagamento,
-        qtd_parcelas=qtd_parcelas
-    )
+    resultado_calculo = calcular({
+    "valor_original": contrato.valor_total,
+    "dias_em_atraso": dias_em_atraso,
+    "tipo_pagamento": tipo_pagamento,
+    "quantidade_parcelas": qtd_parcelas,
+    "valor_entrada": data.get("valor_entrada")
+})
+
 
     acordo = Acordo(
         contrato_id=contrato.numero_contrato,
@@ -50,7 +38,8 @@ def criar_acordo(data):
         qtd_parcelas=qtd_parcelas,
         valor_total=resultado_calculo["valor_final"],
         vencimento=datetime.strptime(data["vencimento"], "%Y-%m-%d"),
-        status="em andamento"
+        status="em andamento",
+        parcelamento_json=json.dumps(resultado_calculo.get("parcelamento")) if resultado_calculo.get("parcelamento") else None
     )
 
     db.session.add(acordo)
@@ -61,15 +50,19 @@ def criar_acordo(data):
             "id": acordo.id,
             "valor_final": resultado_calculo["valor_final"],
             "dias_em_atraso": dias_em_atraso,
-            "parcelamento": resultado_calculo.get("parcelamento", None)
+            "parcelamento": resultado_calculo.get("parcelamento")
         }
     }
+
 
 def listar_acordos():
     return Acordo.query.all()
 
 def obter_acordo(id):
     return Acordo.query.get(id)
+
+def obter_acordo_por_contrato(numero_contrato):
+    return Acordo.query.filter_by(contrato_id=numero_contrato).first()
 
 def atualizar_acordo(id, data):
     acordo = Acordo.query.get(id) 
@@ -89,6 +82,22 @@ def atualizar_acordo(id, data):
     db.session.commit()
     return acordo
 
+def simular_acordo(payload):
+    if not payload:
+        raise ValueError("Payload não fornecido.")
+
+    campos_obrigatorios = ["valor_original", "dias_em_atraso", "tipo_pagamento"]
+    for campo in campos_obrigatorios:
+        if campo not in payload:
+            raise ValueError(f"Campo obrigatório '{campo}' ausente.")
+
+    if payload.get("tipo_pagamento") == "parcelado" and "quantidade_parcelas" not in payload:
+        raise ValueError("Campo 'quantidade_parcelas' é obrigatório para parcelamento.")
+
+    resultado = calcular(payload)
+
+    return resultado
+
 def deletar_acordo(id):
     acordo = Acordo.query.get(id)
     if not acordo:
@@ -97,3 +106,4 @@ def deletar_acordo(id):
     db.session.delete(acordo)
     db.session.commit()
     return True
+

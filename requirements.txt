@@ -1,17 +1,16 @@
---constraint constraints.txt
-
-flask==2.2.5
+flask==3.0.3
 flask_sqlalchemy==3.1.1
 flask_marshmallow==1.2.1
 marshmallow==3.21.1
 python-dotenv==1.0.1
-flask-restx==1.1.0
 flask-cors==4.0.0
+
 python-multipart==0.0.9
 python-docx==1.1.0
 pandas==2.2.2
-gunicorn==21.2.0
+
 psycopg2-binary==2.9.9
+
 pytest==8.2.2
 Flasgger==0.9.5
 marshmallow-sqlalchemy==0.29.0

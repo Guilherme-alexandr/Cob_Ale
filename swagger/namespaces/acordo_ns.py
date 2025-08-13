@@ -1,6 +1,9 @@
-from flask import request
+from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from app.controllers import acordo_controller
+from app.controllers.acordo_controller import simular_acordo
+
+
 
 acordo_ns = Namespace("acordos", description="Operações com acordos")
 
@@ -34,7 +37,6 @@ class AcordoList(Resource):
         data = request.get_json()
         resultado = acordo_controller.criar_acordo(data)
         acordo = resultado["acordo"]
-        # Construir a resposta com o modelo esperado
         response = acordo.copy()
         response["parcelamento"] = acordo.get("parcelamento", None)
         return response, 201
@@ -67,3 +69,28 @@ class AcordoDetail(Resource):
         if not resultado:
             acordo_ns.abort(404, "Acordo não encontrado")
         return {"mensagem": "Acordo deletado com sucesso"}, 204
+
+@acordo_ns.route("/buscar_por_contrato/<string:numero_contrato>")
+@acordo_ns.param("numero_contrato", "Número do contrato")
+class AcordoByContrato(Resource):
+    def get(self, numero_contrato):
+        """Obter acordo pelo número do contrato"""
+        acordo = acordo_controller.obter_acordo_por_contrato(numero_contrato)
+        if not acordo:
+            return {"erro": "Acordo não encontrado"}, 404
+        return acordo.to_dict(), 200
+
+@acordo_ns.route("/simular")
+class AcordoSimulacao(Resource):
+    def post(self):
+        """Simular acordo"""
+        payload = request.get_json()
+        try:
+            resultado_simulacao = simular_acordo(payload)
+            return resultado_simulacao, 200
+        except ValueError as e:
+            return {"erro": str(e)}, 400
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"erro": "Erro interno ao processar a simulação"}, 500
