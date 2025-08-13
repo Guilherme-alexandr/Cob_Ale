@@ -7,10 +7,10 @@ from app.routes.cliente_route import cliente_bp
 from app.routes.contrato_route import contrato_bp
 from app.routes.acordo_route import acordo_bp
 
-
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
     app.config.from_object(Config)
     configure_swagger(app)
 

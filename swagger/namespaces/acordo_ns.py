@@ -1,7 +1,9 @@
 from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from app.controllers import acordo_controller
-from app.controllers.acordo_controller import calcular_simulacao
+from app.controllers.acordo_controller import simular_acordo
+
+
 
 acordo_ns = Namespace("acordos", description="Operações com acordos")
 
@@ -78,28 +80,17 @@ class AcordoByContrato(Resource):
             return {"erro": "Acordo não encontrado"}, 404
         return acordo.to_dict(), 200
 
-# ✅ Substituído por uma classe Resource
 @acordo_ns.route("/simular")
-class SimulacaoAcordo(Resource):
+class AcordoSimulacao(Resource):
     def post(self):
-        """Simular acordo com base nos parâmetros fornecidos"""
+        """Simular acordo"""
+        payload = request.get_json()
         try:
-            payload = request.get_json()
-            if not payload:
-                raise ValueError("Payload não fornecido.")
-
-            campos_obrigatorios = ["valor_original", "dias_em_atraso", "tipo_pagamento"]
-            for campo in campos_obrigatorios:
-                if campo not in payload:
-                    raise ValueError(f"Campo obrigatório '{campo}' ausente.")
-
-            if payload.get("tipo_pagamento") == "parcelado" and "quantidade_parcelas" not in payload:
-                raise ValueError("Campo 'quantidade_parcelas' é obrigatório para parcelamento.")
-
-            resultado = calcular_simulacao(payload)
-            return jsonify(resultado), 200
-
+            resultado_simulacao = simular_acordo(payload)
+            return resultado_simulacao, 200
+        except ValueError as e:
+            return {"erro": str(e)}, 400
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return jsonify({"erro": str(e)}), 400
+            return {"erro": "Erro interno ao processar a simulação"}, 500

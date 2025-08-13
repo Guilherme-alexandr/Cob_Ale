@@ -82,9 +82,21 @@ def atualizar_acordo(id, data):
     db.session.commit()
     return acordo
 
-def calcular_simulacao(payload):
-    return calcular(payload)
+def simular_acordo(payload):
+    if not payload:
+        raise ValueError("Payload não fornecido.")
 
+    campos_obrigatorios = ["valor_original", "dias_em_atraso", "tipo_pagamento"]
+    for campo in campos_obrigatorios:
+        if campo not in payload:
+            raise ValueError(f"Campo obrigatório '{campo}' ausente.")
+
+    if payload.get("tipo_pagamento") == "parcelado" and "quantidade_parcelas" not in payload:
+        raise ValueError("Campo 'quantidade_parcelas' é obrigatório para parcelamento.")
+
+    resultado = calcular(payload)
+
+    return resultado
 
 def deletar_acordo(id):
     acordo = Acordo.query.get(id)
