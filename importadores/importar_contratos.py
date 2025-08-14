@@ -1,3 +1,4 @@
+import os
 from docx import Document
 from datetime import datetime
 from app.database import db
@@ -43,8 +44,9 @@ def importar_contratos_docx(caminho_arquivo):
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():
-        importar_contratos_docx(
-            "C:/Users/guilh/OneDrive/Documentos/contratos_exemplo.docx"
-        )
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        caminho = os.path.join(base_dir, "contratos_exemplo.docx")
+        importar_contratos_docx(caminho)
+
 
 # python -m importadores.importar_contratos
