@@ -33,3 +33,5 @@ def deletar_cliente(id):
 def buscar_cliente_por_cpf(cpf):
     return Cliente.query.filter_by(cpf=cpf).first()
 
+def buscar_clientes_por_nome(nome):
+    return Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
