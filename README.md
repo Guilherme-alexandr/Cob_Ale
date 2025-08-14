@@ -1,6 +1,6 @@
 # 💰 CobAle - Sistema de Cobrança
 
-CobAle é um sistema de cobrança desenvolvido em Flask como projeto pessoal durante as férias. O objetivo é simular a estrutura de uma API completa com microsserviço, regras de negócio, organização em camadas e controle de acordos de pagamento sobre contratos em atraso.
+CobAle é um sistema de cobrança desenvolvido em Flask como projeto pessoal. O objetivo é simular a estrutura de uma API completa com microsserviço, regras de negócio, organização em camadas e controle de acordos de pagamento sobre contratos em atraso.
 
 ---
 

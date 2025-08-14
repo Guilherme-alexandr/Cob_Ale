@@ -39,6 +39,19 @@ def obter(id):
         "email": cliente.email
     })
 
+@cliente_bp.route("/buscar_por_nome/<string:nome>", methods=["GET"])
+def buscar_por_nome(nome):
+    clientes = cliente_controller.buscar_clientes_por_nome(nome)
+    if not clientes:
+        return jsonify({"error": "Nenhum cliente encontrado"}), 404
+    return jsonify([{
+        "id": c.id,
+        "nome": c.nome,
+        "cpf": c.cpf,
+        "numero": c.numero,
+        "email": c.email
+    } for c in clientes])
+
 @cliente_bp.route("/<int:id>", methods=["PUT"])
 def atualizar(id):
     data = request.get_json()
