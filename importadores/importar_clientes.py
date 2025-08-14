@@ -1,3 +1,4 @@
+import os
 from docx import Document
 from app.database import db
 from app.models.cliente import Cliente
@@ -37,9 +38,8 @@ def importar_clientes_docx(caminho_arquivo):
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():
-        importar_clientes_docx(
-            "C:/Users/guilh/OneDrive/Documentos/clientes_exemplo.docx"
-        )
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        caminho = os.path.join(base_dir, "clientes_exemplo.docx")
+        importar_clientes_docx(caminho)
 
-        
 # python -m importadores.importar_clientes
