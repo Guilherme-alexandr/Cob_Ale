@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 from importadores.importar_clientes import importar_clientes_docx
 from importadores.importar_contratos import importar_contratos_docx
 import os
@@ -18,8 +18,8 @@ def importar_exemplos():
     clientes_path = os.path.join(base_dir, "../importadores/clientes_exemplo.docx")
     contratos_path = os.path.join(base_dir, "../importadores/contratos_exemplo.docx")
 
-    importar_clientes_docx(clientes_path)
-    importar_contratos_docx(contratos_path)
+    importar_clientes_docx(clientes_path, current_app)
+    importar_contratos_docx(contratos_path, current_app)
 
     ja_importado = True
     return jsonify({"mensagem": "Importação concluída com sucesso!"})

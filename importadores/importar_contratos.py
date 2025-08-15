@@ -3,7 +3,7 @@ from docx import Document
 from datetime import datetime
 from app.database import db
 from app.models.contrato import Contrato
-from run import create_app
+
 
 def importar_contratos_docx(caminho_arquivo):
     doc = Document(caminho_arquivo)
@@ -42,6 +42,7 @@ def importar_contratos_docx(caminho_arquivo):
 
 
 if __name__ == "__main__":
+    from run import create_app
     app = create_app()
     with app.app_context():
         base_dir = os.path.dirname(os.path.abspath(__file__))
