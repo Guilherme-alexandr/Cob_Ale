@@ -22,7 +22,7 @@ def importar_exemplos():
         return jsonify({"erro": "Arquivos de exemplo não encontrados no servidor"}), 404
 
     importar_clientes_docx(clientes_path, current_app)
-    importar_contratos_docx(contratos_path, current_app)
+    importar_contratos_docx(contratos_path)
 
     ja_importado = True
     return jsonify({"mensagem": "Importação concluída com sucesso!"})
