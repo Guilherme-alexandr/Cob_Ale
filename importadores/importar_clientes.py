@@ -22,6 +22,10 @@ def importar_clientes_docx(caminho_arquivo, app):
                     print(f"Registro inválido na linha {i + 1}")
                     continue
 
+                if Cliente.query.filter_by(cpf=cpf).first():
+                    print(f"CPF {cpf} já existe, ignorando...")
+                    continue
+
                 cliente = Cliente(
                     nome=nome,
                     cpf=cpf,

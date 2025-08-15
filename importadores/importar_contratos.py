@@ -5,9 +5,10 @@ from app.database import db
 from app.models.contrato import Contrato
 
 
-def importar_contratos_docx(caminho_arquivo):
-    doc = Document(caminho_arquivo)
-    contratos_importados = 0
+def importar_contratos_docx(caminho_arquivo, app):
+    with app.app_context():
+        doc = Document(caminho_arquivo)
+        contratos_importados = 0
 
     for tabela in doc.tables:
         for i, linha in enumerate(tabela.rows):
@@ -47,7 +48,8 @@ if __name__ == "__main__":
     with app.app_context():
         base_dir = os.path.dirname(os.path.abspath(__file__))
         caminho = os.path.join(base_dir, "contratos_exemplo.docx")
-        importar_contratos_docx(caminho)
+        importar_contratos_docx(caminho, app)
+
 
 
 # python -m importadores.importar_contratos
