@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 from importadores.importar_clientes import importar_clientes_docx
 from importadores.importar_contratos import importar_contratos_docx
 
@@ -21,8 +21,8 @@ def importar_exemplos():
     if not os.path.isfile(clientes_path) or not os.path.isfile(contratos_path):
         return jsonify({"erro": "Arquivos de exemplo não encontrados no servidor"}), 404
 
-    importar_clientes_docx(clientes_path)
-    importar_contratos_docx(contratos_path)
+    importar_clientes_docx(clientes_path, current_app)
+    importar_contratos_docx(contratos_path, current_app)
 
     ja_importado = True
     return jsonify({"mensagem": "Importação concluída com sucesso!"})
