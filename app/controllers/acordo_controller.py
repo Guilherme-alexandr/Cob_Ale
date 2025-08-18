@@ -1,9 +1,12 @@
 from datetime import datetime
 from app.database import db
-from app.models.acordo import Acordo
+from app.models.cliente import Cliente
+from app.models.acordo import Acordo, Boleto
 from app.models.contrato import Contrato
+from importadores import boletos
 from calculadora import calcular
-import json
+import json, os
+
 
 def calcular_dias_atraso(vencimento):
     hoje = datetime.utcnow()
@@ -107,3 +110,59 @@ def deletar_acordo(id):
     db.session.commit()
     return True
 
+def gerar_boleto(acordo_id):
+    acordo = Acordo.query.get(acordo_id)
+    if not acordo:
+        raise Exception("Acordo não encontrado")
+
+    contrato = Contrato.query.filter_by(numero_contrato=acordo.contrato_id).first()
+    if not contrato:
+        raise Exception("Contrato não encontrado")
+
+    cliente = Cliente.query.get(contrato.cliente_id)
+    if not cliente:
+        raise Exception("Cliente não encontrado")
+
+
+    contrato_dict = {"numero_contrato": contrato.numero_contrato, "filial": contrato.filial}
+    acordo_dict = {
+        "id": acordo.id,
+        "vencimento": acordo.vencimento.strftime("%Y-%m-%d"),
+        "valor": acordo.valor_total
+    }
+    cliente_dict = {"nome": cliente.nome, "cpf": cliente.cpf, "email": cliente.email}
+
+    pasta_boletos = r"C:\Users\guilh\OneDrive\Documentos\CobAle_boletos"
+    os.makedirs(pasta_boletos, exist_ok=True) 
+
+    nome_arquivo = f"boleto_{acordo.id}.pdf"
+    caminho_pdf = os.path.join(pasta_boletos, nome_arquivo)
+
+    boletos.gerar_boleto(contrato_dict, acordo_dict, cliente_dict, caminho_pdf)
+
+    novo_boleto = Boleto(acordo_id=acordo.id, caminho_pdf=caminho_pdf)
+    db.session.add(novo_boleto)
+    db.session.commit()
+
+    return {
+        "mensagem": "Boleto gerado com sucesso",
+        "boleto_id": novo_boleto.id,
+        "caminho_pdf": caminho_pdf
+    }
+
+
+def enviar_boleto(boleto_id):
+    boleto = Boleto.query.get(boleto_id)
+    if not boleto:
+        raise Exception("Boleto não encontrado")
+
+    acordo = Acordo.query.get(boleto.acordo_id)
+    contrato = Contrato.query.filter_by(numero_contrato=acordo.contrato_id).first()
+    cliente = Cliente.query.get(contrato.cliente_id)
+
+    boletos.enviar_boleto_email(cliente.email, boleto.caminho_pdf)
+
+    boleto.enviado = True
+    db.session.commit()
+
+    return {"mensagem": f"Boleto enviado para {cliente.email}", "boleto_id": boleto.id}

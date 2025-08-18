@@ -27,3 +27,14 @@ class Acordo(db.Model):
             "vencimento": self.vencimento.strftime("%Y-%m-%d"),
             "status": self.status
         }
+
+class Boleto(db.Model):
+    __tablename__ = "boletos"
+
+    id = db.Column(db.Integer, primary_key= True)
+    acordo_id = db.Column(db.Integer, db.ForeignKey("acordo.id"), nullable=False)
+    caminho_pdf = db.Column(db.String, nullable= False)
+    criado_em = db.Column(db.DateTime, default= datetime.utcnow)
+    enviado = db.Column(db.Boolean, default= False)
+
+    acordo = db.relationship("Acordo", backref= db.backref("boletos", lazy=True))

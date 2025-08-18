@@ -87,3 +87,18 @@ def simular_acordo():
         traceback.print_exc()
         return jsonify({"erro": str(e)}), 400
 
+@acordo_bp.route("/gerar_boleto/<int:acordo_id>", methods=["POST"])
+def gerar_boleto(acordo_id):
+    try:
+        resultado = acordo_controller.gerar_boleto(acordo_id)
+        return jsonify(resultado), 201
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 400
+    
+@acordo_bp.route("/enviar_boleto/<int:boleto_id>", methods=["POST"])
+def enviar_boleto(boleto_id):
+    try:
+        resultado = acordo_controller.enviar_boleto(boleto_id)
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 400

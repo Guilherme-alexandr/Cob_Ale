@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from app.controllers import cliente_controller
 
@@ -67,3 +67,21 @@ class ClientePorCPF(Resource):
         if not cliente:
             cliente_ns.abort(404, "Cliente não encontrado")
         return cliente
+
+
+@cliente_ns.route("/buscar_por_nome/<string:nome>")
+@cliente_ns.param("nome", "Nome do cliente")
+class ClientePorNome(Resource):
+    @cliente_ns.marshal_with(cliente_model)
+    def get(self, nome):
+        """Buscar cliente pelo Nome"""
+        cliente = cliente_controller.buscar_clientes_por_nome(nome)
+        if not cliente:
+            return jsonify({"error": "Nenhum cliente encontrado"}), 404
+        return jsonify([{
+            "id": c.id,
+            "nome": c.nome,
+            "cpf": c.cpf,
+            "numero": c.numero,
+            "email": c.email
+        } for c in cliente])
