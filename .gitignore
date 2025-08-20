@@ -21,3 +21,5 @@ htmlcov/
 *.sublime-project
 *.sublime-workspace
 img/
+migrations/
+boletos/

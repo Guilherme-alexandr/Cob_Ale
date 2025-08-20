@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boleto CobAle</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 16px;
+      background-color: #fff;
+      color: #000;
+      line-height: 1.3;
+    }
+
+    .container {
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 12px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .logo {
+      background-color: #0069bf;
+      color: white;
+      font-weight: 700;
+      padding: 8px 16px;
+      font-size: 1.3rem;
+      user-select: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      border-radius: 2px;
+    }
+    .boleto-title {
+      font-style: italic;
+      font-size: 1rem;
+    }
+
+    .instructions {
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+    }
+    .instructions strong {
+      font-weight: 700;
+    }
+    .instructions .line-editable {
+      font-family: monospace;
+      user-select: text;
+      word-break: break-all;
+      white-space: nowrap;
+      overflow-x: auto;
+      display: inline-block;
+      max-width: 60vw;
+      vertical-align: middle;
+      margin-left: 12px;
+    }
+    .cut-line {
+      text-align: center;
+      margin: 16px 0;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      user-select: none;
+    }
+    .cut-line span {
+      border-bottom: 1px dashed #444;
+      padding-bottom: 2px;
+      font-weight: bold;
+    }
+
+    .boleto-box {
+      border: 2px solid black;
+      border-radius: 2px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      font-weight: 400;
+      margin-bottom: 14px;
+      user-select: none;
+    }
+
+    table.boleto-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      border: none;
+    }
+    .boleto-table td,
+    .boleto-table th {
+      border: 1px solid black;
+      padding: 4px 8px;
+      vertical-align: top;
+      font-size: 0.8rem;
+      font-weight: 400;
+    }
+    .boleto-table th {
+      text-align: left;
+      font-weight: 700;
+      background-color: #f0f0f0;
+    }
+    .boleto-table strong {
+      font-weight: 700;
+    }
+
+    .boleto-header td {
+      font-weight: 700;
+      text-align: center;
+      background: white;
+    }
+
+    .right-align-bold {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .demonstrativo {
+      border: 1px solid black;
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      white-space: pre-wrap;
+      user-select: text;
+      background: #f8f8f8;
+    }
+
+    .small-text {
+      font-size: 0.7rem;
+      font-weight: 400;
+      user-select: text;
+      color: #333;
+      line-height: 1.2;
+    }
+
+    .auth-text {
+      font-size: 0.75rem;
+      text-align: right;
+      user-select: none;
+      margin-top: 4px;
+      margin-bottom: 8px;
+    }
+
+    .barcode-container {
+      margin: 12px 0 24px;
+      user-select: none;
+      overflow-x: auto;
+    }
+    .barcode {
+      height: 64px;
+      width: 100%;
+      max-width: 400px;
+      background: repeating-linear-gradient(
+        to right,
+        black 0,
+        black 2px,
+        white 2px,
+        white 4px
+      );
+      box-shadow:
+        inset 0 0 2px #111;
+      border-radius: 3px;
+    }
+
+    @media (max-width: 600px) {
+      .header {
+        justify-content: center;
+      }
+      .logo {
+        font-size: 1.1rem;
+        padding: 6px 12px;
+      }
+      .boleto-title {
+        font-size: 0.9rem;
+        text-align: center;
+        width: 100%;
+      }
+      .instructions {
+        font-size: 0.85rem;
+      }
+      .instructions .line-editable {
+        max-width: 100%;
+        display: block;
+        margin-top: 2px;
+        word-break: break-word;
+      }
+      .boleto-table td,
+      .boleto-table th {
+        padding: 6px 4px;
+        font-size: 0.75rem;
+      }
+      .demonstrativo {
+        font-size: 0.78rem;
+        padding: 6px 6px;
+      }
+      .small-text {
+        font-size: 0.65rem;
+      }
+      .auth-text {
+        font-size: 0.65rem;
+      }
+      .barcode {
+        max-width: 100%;
+        height: 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" role="main" aria-label="Boleto CobAle">
+
+    <header class="header">
+      <div class="logo" aria-label="Logo CobAle">CobAle</div>
+      <div class="boleto-title" aria-label="Título do boleto">Boleto CobAle</div>
+    </header>
+
+    <section class="instructions" aria-label="Instruções para pagamento do boleto">
+      <p><strong>Imprima e pague seu boleto</strong><br />
+         em qualquer agência bancaria até o vencimento.<br />
+         Não imprima em modo rascunho.</p>
+      <p><strong>Pague pelo internet Banking</strong>
+        <span class="line-editable" aria-label="Linha digitável do boleto">
+            {{ boleto.linha_digitavel }}
+        </span>
+      </p>
+    </section>
+
+    <div class="cut-line" aria-hidden="true"><span>Cortar nas linhas pontilhadas</span></div>
+
+    <section class="boleto-box" aria-label="Recibo do Sacado">
+      <table class="boleto-table" role="table" aria-describedby="desc-recibo-sacado">
+        <thead>
+          <tr class="boleto-header" role="row">
+            <th scope="col">CobAle</th>
+            <th scope="col">Recibo do Sacado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Cedente</strong><br /><b>CobAle Sistema de Cobrança S.A.</b></td>
+            <td><strong>Agência/Cod.Cedente</strong><br />0000-0 / 0000000-0</td>
+            <td><strong>Data do documento</strong><br />00/00/0000</td>
+            <td class="right-align-bold"><strong>Vencimento</strong><br />{{ boleto.vencimento }}</td>
+          </tr>
+          <tr>
+            <td><strong>Sacado</strong><br />{{ boleto.sacado }}</td>
+            <td><strong>Numero Documento</strong><br />{{ boleto.nosso_numero }}</td>
+            <td><strong>Filial / Loja</strong><br />{{ boleto.filial_loja }}</td>
+            <td class="right-align-bold"><strong>Valor do Documento</strong><br />R$ {{ '%.2f'|format(boleto.valor_documento) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="demonstrativo" id="desc-recibo-sacado" tabindex="0" aria-label="Demonstrativo">
+        <p><strong>{{ boleto.demonstrativo }}</strong></p>
+      </div>
+
+      <div class="auth-text" aria-hidden="true">Autenticação mecânica</div>
+    </section>
+
+    <div class="cut-line" aria-hidden="true"><span>Cortar nas linhas pontilhadas</span></div>
+
+    <section class="boleto-box" aria-label="Ficha de compensação">
+      <table class="boleto-table" role="table" aria-describedby="desc-ficha-compensacao">
+        <thead>
+          <tr class="boleto-header" role="row">
+            <th scope="col">CobAle</th>
+            <th scope="col" colspan="5">{{ boleto.linha_digitavel }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Local de Pagamento</strong><br />Pagável em qualquer banco até o vencimento</td>
+            <td colspan="5" class="right-align-bold"><strong>Vencimento</strong><br />{{ boleto.vencimento }}</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Cedente</strong><br />
+              CobAle Sistema de Cobrança S.A.
+            </td>
+            <td colspan="5" class="right-align-bold">
+              <strong>Agencia/ Código Cedente</strong><br />
+              0000-0 / 0000000-0
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Data do documento</strong><br />00/00/0000</td>
+            <td><strong>Numero Documento</strong><br />{{ boleto.nosso_numero }}</td>
+            <td><strong>Espécie doc<br/>Outros</strong></td>
+            <td><strong>Aceite</strong><br />N</td>
+            <td><strong>Data Processamento</strong><br />00/00/0000</td>
+            <td><strong>Numero Documento</strong><br />00/0000000000-A</td>
+          </tr>
+          <tr>
+            <td><strong>Uso do Banco</strong></td>
+            <td><strong>Filial / Loja<br />{{ boleto.filial_loja }}</strong></td>
+            <td><strong>Moeda<br />R$</strong></td>
+            <td><strong>Quantidade</strong></td>
+            <td><strong>Valor</strong></td>
+            <td class="right-align-bold"><strong>(=) Valor do Documento</strong><br />R$ {{ '%.2f'|format(boleto.valor_documento) }}</td>
+          </tr>
+          <tr>
+            <td colspan="4" aria-label="Instruções">
+              <strong>Instruções</strong><br />
+              Sr. Caixa, não receber após o vencimento
+            </td>
+            <td><strong>(-) Descontos/Abatimento</strong><br />R$ {{ '%.2f'|format(boleto.descontos_abatimento) }}</td>
+            <td><strong>(+) Mora/Multa</strong><br />R$ {{ '%.2f'|format(boleto.mora_multa) }}</td>
+          </tr>
+          <tr>
+            <td colspan="4" class="small-text" aria-label="Endereço sacado">
+              Sacado {{ boleto.sacado }}<br />
+              {{ boleto.endereco_sacado }}<br />
+              {{ boleto.cep_sacado }} - {{ boleto.cidade_sacado }}, {{ boleto.estado_sacado }}
+            </td>
+            <td colspan="2" class="right-align-bold" style="vertical-align: middle;">
+              <strong>Ficha de Compensação</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="auth-text" aria-hidden="true">Autenticação mecânica</div>
+    </section>
+
+    <section class="barcode-container" aria-label="Código de barras visual">
+      <div class="barcode" aria-hidden="true"></div>
+    </section>
+
+    <footer class="small-text" aria-label="URL do emisor">
+      https://cob-ale.onrender.com
+    </footer>
+
+  </div>
+</body>
+</html>
+
+
