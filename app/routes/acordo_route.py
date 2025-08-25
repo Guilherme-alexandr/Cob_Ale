@@ -1,12 +1,9 @@
 from flask import Blueprint, request, jsonify, make_response, render_template, current_app
 from flask_cors import cross_origin
 from functools import wraps
-from weasyprint import HTML
 from app.controllers import acordo_controller
-from app.models.acordo import Acordo, Boleto, db
 
 
-# Decorator para tratar exceções de forma padronizada
 def safe_route(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -110,8 +107,6 @@ def gerar_boleto(acordo_id):
 @safe_route
 def enviar_boleto():
     """
-    Envia um boleto. 
-    JSON esperado:
     {
         "acordo_id": <id opcional>,
         "boleto_id": <id obrigatório>

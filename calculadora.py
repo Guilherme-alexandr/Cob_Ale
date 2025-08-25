@@ -1,5 +1,3 @@
-from flask import request, jsonify
-
 def calcular(payload):
     try:
         valor_original = float(payload.get('valor_original', 0))

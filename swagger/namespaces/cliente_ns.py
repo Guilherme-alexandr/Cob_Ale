@@ -4,13 +4,25 @@ from app.controllers import cliente_controller
 
 cliente_ns = Namespace("clientes", description="Operações com clientes")
 
+endereco_model = cliente_ns.model("Endereco", {
+    "id": fields.Integer(readOnly=True, description="ID do endereço"),
+    "rua": fields.String(required=True, description="Rua do endereço", default="Rua das Flores"),
+    "numero": fields.String(required=True, description="Número do endereço", default="123"),
+    "cidade": fields.String(required=True, description="Cidade do endereço", default="São Paulo"),
+    "estado": fields.String(required=True, description="Estado do endereço (UF)", default="SP"),
+    "cep": fields.String(required=True, description="CEP do endereço", default="01001000")
+})
+
 cliente_model = cliente_ns.model("Cliente", {
     "id": fields.Integer(readOnly=True),
     "nome": fields.String(required=True, description="Nome do cliente", default="João da Silva"),
     "cpf": fields.String(required=True, description="CPF do cliente", default="12345678901"),
-    "numero": fields.String(required=True, description="Número de telefone do cliente", default="11999998888"),
-    "email": fields.String(required=True, description="Email do cliente", default="joao.silva@email.com")
+    "telefone": fields.String(required=True, description="Número de telefone do cliente", default="11999998888"),
+    "email": fields.String(required=True, description="Email do cliente", default="joao.silva@email.com"),
+    "enderecos": fields.List(fields.Nested(endereco_model), description="Lista de endereços do cliente")
 })
+
+
 
 
 @cliente_ns.route("/")

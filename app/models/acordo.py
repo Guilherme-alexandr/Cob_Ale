@@ -8,15 +8,13 @@ class Acordo(db.Model):
     contrato_id = db.Column(db.String(6), db.ForeignKey("contrato.numero_contrato"), nullable=False)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     vencimento = db.Column(db.DateTime, nullable=False)
-    tipo_pagamento = db.Column(db.String(20), nullable=False)  # ex: "à vista", "parcelado"
+    tipo_pagamento = db.Column(db.String(20), nullable=False)
     qtd_parcelas = db.Column(db.Integer, nullable=False, default=1)
     valor_total = db.Column(db.Numeric(10, 2), nullable=False)
-    status = db.Column(db.String(20), default="em andamento")  # em andamento, quebrado, finalizado
+    status = db.Column(db.String(20), default="em andamento")
 
-    # se seu banco suportar JSON, troque para db.JSON
     parcelamento_json = db.Column(db.Text, nullable=True)
 
-    # relacionamento
     contrato = db.relationship("Contrato", backref=db.backref("acordos", lazy=True))
 
     def to_dict(self, include_boletos=False):
@@ -42,12 +40,11 @@ class Boleto(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     acordo_id = db.Column(db.Integer, db.ForeignKey("acordos.id"), nullable=False)
-    pdf_arquivo = db.Column(db.LargeBinary, nullable=True)  # <- aqui salva o PDF
+    pdf_arquivo = db.Column(db.LargeBinary, nullable=True)
     nome_arquivo = db.Column(db.String(255), nullable=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     enviado = db.Column(db.Boolean, default=False)
 
-    # relacionamento
     acordo = db.relationship("Acordo", backref=db.backref("boletos", lazy=True))
 
     def to_dict(self):

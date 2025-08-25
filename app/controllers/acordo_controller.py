@@ -14,7 +14,6 @@ from weasyprint import HTML
 # ------------------- Helpers -------------------
 
 def _pasta_boletos():
-    """Retorna o caminho absoluto da pasta de boletos"""
     pasta = os.path.join(current_app.root_path, "..", "boletos")
     os.makedirs(pasta, exist_ok=True)
     return os.path.abspath(pasta)
@@ -111,7 +110,6 @@ def deletar_acordo(id):
 
     pasta_boletos = _pasta_boletos()
 
-    # Remover PDFs da pasta
     for boleto in acordo.boletos:
         for arquivo in os.listdir(pasta_boletos):
             if arquivo.startswith(f"boleto_{acordo.id}") and arquivo.endswith(".pdf"):
@@ -120,7 +118,6 @@ def deletar_acordo(id):
                 except Exception as e:
                     print(f"Erro ao apagar {arquivo}: {e}")
 
-    # Remover registros do banco
     for boleto in acordo.boletos:
         db.session.delete(boleto)
 
@@ -195,7 +192,6 @@ def info_boleto(acordo_id):
 
 
 def gerar_boleto(acordo_id):
-    """Gera (ou busca do banco) o PDF de um boleto e retorna o binário + nome do arquivo"""
     acordo = Acordo.query.get_or_404(acordo_id)
     boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
 
@@ -206,7 +202,6 @@ def gerar_boleto(acordo_id):
     if status != 200:
         raise ValueError("Erro ao gerar informações do boleto.")
 
-    # QR Code
     qr = qrcode.QRCode(box_size=4, border=1)
     qr.add_data(f"https://www.seuboleto.com.br/gerar?codigo={boleto_info['nosso_numero']}")
     qr.make(fit=True)
@@ -214,30 +209,25 @@ def gerar_boleto(acordo_id):
     qr.make_image(fill_color="black", back_color="white").save(buf_qr, format="PNG")
     qr_code_b64 = base64.b64encode(buf_qr.getvalue()).decode("utf-8")
 
-    # Código de barras
     CODE128 = barcode.get_barcode_class("code128")
     bar = CODE128(boleto_info["nosso_numero"], writer=ImageWriter())
     buf_bar = io.BytesIO()
     bar.write(buf_bar)
     barcode_b64 = base64.b64encode(buf_bar.getvalue()).decode("utf-8")
 
-    # Logo
     logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
     with open(logo_path, "rb") as f:
         logo_b64 = base64.b64encode(f.read()).decode("utf-8")
 
-    # HTML → PDF
     html = render_template("boleto.html", boleto=boleto_info, qr_code=qr_code_b64, barcode_img=barcode_b64, logo_b64=logo_b64)
     pdf = HTML(string=html).write_pdf()
 
-    # Salvar em disco
     pasta = _pasta_boletos()
     nome_arquivo = f"boleto_{acordo.id}.pdf"
     caminho_pdf = os.path.join(pasta, nome_arquivo)
     with open(caminho_pdf, "wb") as f:
         f.write(pdf)
 
-    # Salvar no banco
     boleto = Boleto(acordo_id=acordo.id, pdf_arquivo=pdf, nome_arquivo=nome_arquivo, criado_em=datetime.utcnow(), enviado=False)
     db.session.add(boleto)
     db.session.commit()
@@ -246,7 +236,6 @@ def gerar_boleto(acordo_id):
 
 
 def enviar_boleto(acordo_id=None, boleto_id=None):
-    """Envia um boleto por email (acordo_id opcional, boleto_id obrigatório)"""
     if not boleto_id:
         raise ValueError("boleto_id é obrigatório")
 

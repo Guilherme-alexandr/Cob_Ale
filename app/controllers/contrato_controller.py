@@ -42,6 +42,9 @@ def atualizar_contrato(numero_contrato, data):
     db.session.commit()
     return contrato
 
+def buscar_contratos_por_cliente(cliente_id):
+    return Contrato.query.filter_by(cliente_id=cliente_id).all()
+
 def deletar_contrato(numero_contrato):
     contrato = Contrato.query.get(numero_contrato)
     if not contrato:
@@ -50,11 +53,13 @@ def deletar_contrato(numero_contrato):
     db.session.commit()
     return contrato
 
-def buscar_contratos_por_cliente(cliente_id):
-    return Contrato.query.filter_by(cliente_id=cliente_id).all()
 
 def resetar_contratos():
-    db.session.query(Contrato).delete()
-    db.session.commit()
-    return True
+    try:
+        db.session.query(Contrato).delete()
+        db.session.commit()
+        return {"mensagem": "Todos os contratos foram excluídos com sucesso."}
+    except Exception as e:
+        db.session.rollback()
+        return {"erro": f"Erro ao excluir contratos: {str(e)}"}
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,6 +9,7 @@
     * {
       box-sizing: border-box;
     }
+
     body {
       font-family: Arial, sans-serif;
       margin: 16px;
@@ -30,6 +32,7 @@
       gap: 12px;
       flex-wrap: wrap;
     }
+
     .logo {
       background-color: #0069bf;
       color: white;
@@ -41,6 +44,7 @@
       flex-shrink: 0;
       border-radius: 2px;
     }
+
     .boleto-title {
       font-style: italic;
       font-size: 1rem;
@@ -50,9 +54,11 @@
       margin-bottom: 24px;
       font-size: 0.9rem;
     }
+
     .instructions strong {
       font-weight: 700;
     }
+
     .instructions .line-editable {
       font-family: monospace;
       user-select: text;
@@ -64,6 +70,7 @@
       vertical-align: middle;
       margin-left: 12px;
     }
+
     .cut-line {
       text-align: center;
       margin: 16px 0;
@@ -71,6 +78,7 @@
       letter-spacing: 2px;
       user-select: none;
     }
+
     .cut-line span {
       border-bottom: 1px dashed #444;
       padding-bottom: 2px;
@@ -93,6 +101,7 @@
       border-spacing: 0;
       border: none;
     }
+
     .boleto-table td,
     .boleto-table th {
       border: 1px solid black;
@@ -101,11 +110,13 @@
       font-size: 0.8rem;
       font-weight: 400;
     }
+
     .boleto-table th {
       text-align: left;
       font-weight: 700;
       background-color: #f0f0f0;
     }
+
     .boleto-table strong {
       font-weight: 700;
     }
@@ -152,17 +163,16 @@
       user-select: none;
       overflow-x: auto;
     }
+
     .barcode {
       height: 64px;
       width: 100%;
       max-width: 400px;
-      background: repeating-linear-gradient(
-        to right,
-        black 0,
-        black 2px,
-        white 2px,
-        white 4px
-      );
+      background: repeating-linear-gradient(to right,
+          black 0,
+          black 2px,
+          white 2px,
+          white 4px);
       box-shadow:
         inset 0 0 2px #111;
       border-radius: 3px;
@@ -172,39 +182,48 @@
       .header {
         justify-content: center;
       }
+
       .logo {
         font-size: 1.1rem;
         padding: 6px 12px;
       }
+
       .boleto-title {
         font-size: 0.9rem;
         text-align: center;
         width: 100%;
       }
+
       .instructions {
         font-size: 0.85rem;
       }
+
       .instructions .line-editable {
         max-width: 100%;
         display: block;
         margin-top: 2px;
         word-break: break-word;
       }
+
       .boleto-table td,
       .boleto-table th {
         padding: 6px 4px;
         font-size: 0.75rem;
       }
+
       .demonstrativo {
         font-size: 0.78rem;
         padding: 6px 6px;
       }
+
       .small-text {
         font-size: 0.65rem;
       }
+
       .auth-text {
         font-size: 0.65rem;
       }
+
       .barcode {
         max-width: 100%;
         height: 48px;
@@ -212,6 +231,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container" role="main" aria-label="Boleto CobAle">
 
@@ -222,11 +242,11 @@
 
     <section class="instructions" aria-label="Instruções para pagamento do boleto">
       <p><strong>Imprima e pague seu boleto</strong><br />
-         em qualquer agência bancaria até o vencimento.<br />
-         Não imprima em modo rascunho.</p>
+        em qualquer agência bancaria até o vencimento.<br />
+        Não imprima em modo rascunho.</p>
       <p><strong>Pague pelo internet Banking</strong>
         <span class="line-editable" aria-label="Linha digitável do boleto">
-            {{ boleto.linha_digitavel }}
+          {{ boleto.linha_digitavel }}
         </span>
       </p>
     </section>
@@ -252,7 +272,8 @@
             <td><strong>Sacado</strong><br />{{ boleto.sacado }}</td>
             <td><strong>Numero Documento</strong><br />{{ boleto.nosso_numero }}</td>
             <td><strong>Filial / Loja</strong><br />{{ boleto.filial_loja }}</td>
-            <td class="right-align-bold"><strong>Valor do Documento</strong><br />R$ {{ '%.2f'|format(boleto.valor_documento) }}</td>
+            <td class="right-align-bold"><strong>Valor do Documento</strong><br />R$ {{
+              '%.2f'|format(boleto.valor_documento) }}</td>
           </tr>
         </tbody>
       </table>
@@ -292,7 +313,7 @@
           <tr>
             <td><strong>Data do documento</strong><br />00/00/0000</td>
             <td><strong>Numero Documento</strong><br />{{ boleto.nosso_numero }}</td>
-            <td><strong>Espécie doc<br/>Outros</strong></td>
+            <td><strong>Espécie doc<br />Outros</strong></td>
             <td><strong>Aceite</strong><br />N</td>
             <td><strong>Data Processamento</strong><br />00/00/0000</td>
             <td><strong>Numero Documento</strong><br />00/0000000000-A</td>
@@ -303,7 +324,8 @@
             <td><strong>Moeda<br />R$</strong></td>
             <td><strong>Quantidade</strong></td>
             <td><strong>Valor</strong></td>
-            <td class="right-align-bold"><strong>(=) Valor do Documento</strong><br />R$ {{ '%.2f'|format(boleto.valor_documento) }}</td>
+            <td class="right-align-bold"><strong>(=) Valor do Documento</strong><br />R$ {{
+              '%.2f'|format(boleto.valor_documento) }}</td>
           </tr>
           <tr>
             <td colspan="4" aria-label="Instruções">
@@ -338,6 +360,5 @@
 
   </div>
 </body>
+
 </html>
-
-
