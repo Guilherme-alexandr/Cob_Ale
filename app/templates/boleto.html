@@ -332,12 +332,12 @@
               <strong>Instruções</strong><br />
               Sr. Caixa, não receber após o vencimento
             </td>
-            <td><strong>(-) Descontos/Abatimento</strong><br />R$ {{ '%.2f'|format(boleto.descontos_abatimento) }}</td>
-            <td><strong>(+) Mora/Multa</strong><br />R$ {{ '%.2f'|format(boleto.mora_multa) }}</td>
+            <td><strong>(-) Descontos/Abatimento</strong><br />R$ {{ '%.2f'|format(boleto.desconto) }}</td>
+            <td><strong>(+) Mora/Multa</strong><br />R$ {{ '%.2f'|format(boleto.juros) }}</td>
           </tr>
           <tr>
             <td colspan="4" class="small-text" aria-label="Endereço sacado">
-              Sacado {{ boleto.sacado }}<br />
+              Sacado: {{ boleto.sacado }}<br />
               {{ boleto.endereco_sacado }}<br />
               {{ boleto.cep_sacado }} - {{ boleto.cidade_sacado }}, {{ boleto.estado_sacado }}
             </td>
@@ -351,7 +351,7 @@
     </section>
 
     <section class="barcode-container" aria-label="Código de barras visual">
-      <div class="barcode" aria-hidden="true"></div>
+      <img src="data:image/png;base64,{{ barcode_img }}" alt="Código de barras">
     </section>
 
     <footer class="small-text" aria-label="URL do emisor">

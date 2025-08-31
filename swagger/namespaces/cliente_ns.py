@@ -94,6 +94,6 @@ class ClientePorNome(Resource):
             "id": c.id,
             "nome": c.nome,
             "cpf": c.cpf,
-            "numero": c.numero,
+            "telefone": c.telefone,
             "email": c.email
         } for c in cliente])

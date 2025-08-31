@@ -14,6 +14,7 @@ parcelamento_model = acordo_ns.model("Parcelamento", {
     "entrada": fields.Float(description="Valor da entrada"),
     "quantidade_parcelas": fields.Integer(description="Quantidade de parcelas"),
     "valor_parcela": fields.Float(description="Valor de cada parcela"),
+    "valor_total_parcelas": fields.Float(description="Valor total das parcelas")  # incluímos total
 })
 
 acordo_model = acordo_ns.model("Acordo", {
@@ -22,10 +23,13 @@ acordo_model = acordo_ns.model("Acordo", {
     "tipo_pagamento": fields.String(required=True, description="Tipo de pagamento ('avista' ou 'parcelado')", default="parcelado"),
     "qtd_parcelas": fields.Integer(required=True, description="Quantidade de parcelas", default=4),
     "valor_total": fields.Float(readOnly=True, description="Valor total do acordo"),
+    "desconto": fields.Float(readOnly=True, description="Valor do desconto aplicado no acordo"),
+    "juros": fields.Float(readOnly=True, description="Valor do juros aplicado no acordo"),
     "vencimento": fields.Date(required=True, description="Data de vencimento", default="2025-08-10"),
     "status": fields.String(readOnly=True, description="Status do acordo"),
     "parcelamento": fields.Nested(parcelamento_model, description="Detalhes do parcelamento", skip_none=True)
 })
+
 
 boleto_model = acordo_ns.model('Boleto', {
     'id': fields.Integer(readonly=True, description='ID do boleto'),

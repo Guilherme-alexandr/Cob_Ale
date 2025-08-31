@@ -5,7 +5,7 @@ def criar_cliente(data):
     cliente = Cliente(
         nome=data["nome"],
         cpf=data["cpf"],
-        numero=data["numero"],
+        telefone=data["telefone"],
         email=data["email"]
     )
 
@@ -46,21 +46,18 @@ def atualizar_cliente(id, data):
 
     cliente.nome = data.get("nome", cliente.nome)
     cliente.cpf = data.get("cpf", cliente.cpf)
-    cliente.numero = data.get("numero", cliente.numero)
+    cliente.telefone = data.get("telefone", cliente.telefone)
     cliente.email = data.get("email", cliente.email)
 
     if "enderecos" in data:
-        Endereco.query.filter_by(cliente_id=cliente.id).delete()
         for e in data["enderecos"]:
-            endereco = Endereco(
-                rua=e["rua"],
-                numero=e["numero"],
-                cidade=e["cidade"],
-                estado=e["estado"],
-                cep=e["cep"],
-                cliente=cliente
-            )
-            db.session.add(endereco)
+            endereco = Endereco.query.filter_by(id=e.get("id"), cliente_id=cliente.id).first()
+            if endereco:
+                endereco.rua = e.get("rua", endereco.rua)
+                endereco.numero = e.get("numero", endereco.numero)
+                endereco.cidade = e.get("cidade", endereco.cidade)
+                endereco.estado = e.get("estado", endereco.estado)
+                endereco.cep = e.get("cep", endereco.cep)
 
     db.session.commit()
     return cliente_to_dict(cliente)
@@ -104,7 +101,7 @@ def cliente_to_dict(cliente):
         "id": cliente.id,
         "nome": cliente.nome,
         "cpf": cliente.cpf,
-        "numero": cliente.numero,
+        "telefone": cliente.telefone,
         "email": cliente.email,
         "enderecos": [
             {

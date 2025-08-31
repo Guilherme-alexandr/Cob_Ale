@@ -106,12 +106,6 @@ def gerar_boleto(acordo_id):
 @acordo_bp.route("/enviar_boleto", methods=["POST"])
 @safe_route
 def enviar_boleto():
-    """
-    {
-        "acordo_id": <id opcional>,
-        "boleto_id": <id obrigatório>
-    }
-    """
     data = request.get_json()
     acordo_id = data.get("acordo_id")
     boleto_id = data.get("boleto_id")
@@ -137,3 +131,12 @@ def listar_boletos(acordo_id):
 @safe_route
 def deletar_boletos():
     return acordo_controller.deletar_todos_boletos()
+
+@acordo_bp.route("/codigobr/<int:acordo_id>", methods=["GET"])
+def gerar_code(acordo_id):
+    codigo_barras, linha_digitavel = acordo_controller.gerar_linha_digitavel(acordo_id)
+    return jsonify({
+        "codigo_barras": codigo_barras,
+        "linha_digitavel": linha_digitavel
+    }), 200
+

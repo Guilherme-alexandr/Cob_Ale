@@ -11,6 +11,8 @@ class Acordo(db.Model):
     tipo_pagamento = db.Column(db.String(20), nullable=False)
     qtd_parcelas = db.Column(db.Integer, nullable=False, default=1)
     valor_total = db.Column(db.Numeric(10, 2), nullable=False)
+    desconto = db.Column(db.Numeric(10, 2), nullable=False)
+    juros = db.Column(db.Numeric(10, 2), default=0)
     status = db.Column(db.String(20), default="em andamento")
 
     parcelamento_json = db.Column(db.Text, nullable=True)
@@ -24,6 +26,8 @@ class Acordo(db.Model):
             "tipo_pagamento": self.tipo_pagamento,
             "qtd_parcelas": self.qtd_parcelas,
             "valor_total": float(self.valor_total),
+            "desconto": float(self.desconto),
+            "juros": float(self.juros),
             "vencimento": self.vencimento.strftime("%Y-%m-%d"),
             "status": self.status,
             "data_criacao": self.data_criacao.strftime("%Y-%m-%d %H:%M:%S"),
