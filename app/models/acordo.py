@@ -44,7 +44,6 @@ class Boleto(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     acordo_id = db.Column(db.Integer, db.ForeignKey("acordos.id"), nullable=False)
-    pdf_arquivo = db.Column(db.LargeBinary, nullable=True)
     nome_arquivo = db.Column(db.String(255), nullable=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     enviado = db.Column(db.Boolean, default=False)

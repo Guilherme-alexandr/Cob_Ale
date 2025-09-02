@@ -6,14 +6,11 @@ from app.models.acordo import Acordo, Boleto
 from app.models.contrato import Contrato
 from importadores import boletos
 from calculadora import calcular
-
 from reportlab.graphics import renderPM
 from reportlab.graphics.barcode import code128
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib.units import mm
-import json, os, io, base64, qrcode
-
-from barcode.writer import ImageWriter
+import json, os, io, base64
 from weasyprint import HTML
 
 
@@ -197,6 +194,7 @@ def info_boleto(acordo_id):
         "nosso_numero": str(acordo.id).zfill(11),
         "linha_digitavel": linha_digitavel,
         "codigo_barras": codigo_barras,
+
         "cep_sacado": endereco.cep if endereco else "00000-000",
         "endereco_sacado": f"{endereco.rua}, {endereco.numero}" if endereco else "Endereço não informado",
         "cidade_sacado": endereco.cidade if endereco else "Cidade não informada",
@@ -210,8 +208,16 @@ def gerar_boleto(acordo_id):
     acordo = Acordo.query.get_or_404(acordo_id)
     boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
 
-    if boleto and boleto.pdf_arquivo:
-        return boleto.pdf_arquivo, boleto.nome_arquivo
+    pasta = _pasta_boletos()
+    if not os.path.exists(pasta):
+        os.makedirs(pasta)
+
+    nome_arquivo = f"boleto_{acordo.id}.pdf"
+    caminho_pdf = os.path.join(pasta, nome_arquivo)
+
+    if boleto and os.path.exists(caminho_pdf):
+        with open(caminho_pdf, "rb") as f:
+            return f.read(), boleto.nome_arquivo
 
     boleto_info, status = info_boleto(acordo_id)
     if status != 200:
@@ -223,90 +229,90 @@ def gerar_boleto(acordo_id):
 
     if not codigo_barras.isdigit():
         raise ValueError("Código de barras deve ser uma sequência numérica.")
-
+    
     barcode_obj = code128.Code128(codigo_barras, barHeight=20*mm, humanReadable=False)
     drawing = Drawing(width=200*mm, height=25*mm)
     drawing.add(barcode_obj)
 
     buf_bar = io.BytesIO()
-    renderPM.drawToFile(drawing, buf_bar, fmt='PNG')
+    renderPM.drawToFile(drawing, buf_bar, fmt="PNG")
     buf_bar.seek(0)
     barcode_b64 = base64.b64encode(buf_bar.read()).decode("utf-8")
-    print(f"Código de Barras: {codigo_barras} | Linha Digitável: {linha_digitavel}")  # DEBUG
 
     logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
     with open(logo_path, "rb") as f:
         logo_b64 = base64.b64encode(f.read()).decode("utf-8")
 
-    html = render_template(
-        "boleto.html",
-        boleto=boleto_info,
-        barcode_img=barcode_b64,
-        logo_b64=logo_b64
-    )
+    html = render_template("boleto.html", boleto=boleto_info, barcode_img=barcode_b64, logo_b64=logo_b64)
     pdf = HTML(string=html).write_pdf()
 
-    pasta = _pasta_boletos()
-    nome_arquivo = f"boleto_{acordo.id}.pdf"
-    caminho_pdf = os.path.join(pasta, nome_arquivo)
+    if not pdf or not isinstance(pdf, bytes):
+        raise ValueError("Erro ao gerar o PDF do boleto.")
+
     with open(caminho_pdf, "wb") as f:
         f.write(pdf)
 
-    boleto = Boleto(
-        acordo_id=acordo.id,
-        pdf_arquivo=pdf,
-        nome_arquivo=nome_arquivo,
-        criado_em=datetime.utcnow(),
-        enviado=False
-    )
-    db.session.add(boleto)
-    db.session.commit()
+    if not boleto:
+        boleto = Boleto(
+            acordo_id=acordo.id,
+            nome_arquivo=nome_arquivo,
+            criado_em=datetime.utcnow(),
+            enviado=False
+        )
+        db.session.add(boleto)
+    else:
+        boleto.nome_arquivo = nome_arquivo
+        boleto.criado_em = datetime.utcnow()
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao salvar boleto no banco: {e}")
+        raise
 
     return pdf, nome_arquivo
 
 
-def enviar_boleto(acordo_id=None, boleto_id=None):
-    if not boleto_id:
-        raise ValueError("boleto_id é obrigatório")
+def enviar_boleto(acordo_id):
+    acordo = Acordo.query.get_or_404(acordo_id)
+
+    contrato = Contrato.query.get(acordo.contrato_id)
+    if not contrato:
+        raise ValueError("Contrato não encontrado.")
+
+    cliente = Cliente.query.get(contrato.cliente_id)
+    if not cliente or not cliente.email:
+        raise ValueError("Cliente não encontrado ou sem e-mail cadastrado.")
 
     pasta = _pasta_boletos()
-    arquivos = [f for f in os.listdir(pasta) if f.startswith("boleto_") and f.endswith(".pdf")]
-
-    if not arquivos:
-        raise ValueError("Nenhum boleto encontrado")
-
-    if boleto_id < 1 or boleto_id > len(arquivos):
-        raise ValueError("Boleto não encontrado")
-
-    nome_arquivo = arquivos[boleto_id - 1]
+    nome_arquivo = f"boleto_{acordo.id}.pdf"
     caminho_pdf = os.path.join(pasta, nome_arquivo)
 
     if not os.path.exists(caminho_pdf):
-        raise ValueError(f"Arquivo {nome_arquivo} não encontrado")
+        print(f"[INFO] Boleto não encontrado em disco, gerando novamente: {caminho_pdf}")
+        gerar_boleto(acordo.id)
 
-    if acordo_id:
-        acordo = Acordo.query.get(acordo_id)
-        if not acordo:
-            raise ValueError("Acordo não encontrado")
-        contrato = Contrato.query.get(acordo.contrato_id)
-        if not contrato:
-            raise ValueError("Contrato do acordo não encontrado")
-        cliente = Cliente.query.get(contrato.cliente_id)
-    else:
-        acordo = Acordo.query.first()
-        cliente = acordo.contrato.cliente if acordo else None
+    if not os.path.exists(caminho_pdf):
+        raise FileNotFoundError(f"Boleto não encontrado nem gerado: {caminho_pdf}")
 
-    if not cliente:
-        raise ValueError("Cliente não encontrado")
+    try:
+        boletos.enviar_boleto_email(cliente.email, caminho_pdf)
+    except Exception as e:
+        raise RuntimeError(f"Erro ao enviar o e-mail: {e}")
 
-    boletos.enviar_boleto_email(cliente.email, caminho_pdf)
+    boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
+    if boleto:
+        boleto.enviado = True
+        db.session.commit()
 
     return {
         "mensagem": f"Boleto enviado com sucesso para {cliente.email}",
-        "acordo_id": acordo.id if acordo else None,
-        "boleto_id": boleto_id,
+        "acordo_id": acordo.id,
         "arquivo": nome_arquivo,
     }
+
+
 
 
 def listar_boletos_por_pasta(acordo_id):
@@ -364,6 +370,7 @@ def gerar_linha_digitavel(acordo_id, banco="237", carteira="09", agencia="1234",
     return codigo_barras, linha_digitavel
 
 def calcular_dv(codigo):
+
     pesos = [2,3,4,5,6,7,8,9]
     soma = 0
     for i, n in enumerate(reversed(codigo)):

@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify, make_response, render_template, current_app
+from flask import Blueprint, request, jsonify, make_response
 from flask_cors import cross_origin
 from functools import wraps
 from app.controllers import acordo_controller
+import traceback
 
 
 def safe_route(func):
@@ -96,25 +97,23 @@ def info_boleto(acordo_id):
 @acordo_bp.route("/gerar_boleto/<int:acordo_id>", methods=["GET"])
 @safe_route
 def gerar_boleto(acordo_id):
-    pdf, nome_arquivo = acordo_controller.gerar_boleto(acordo_id)
+    pdf, nome_arquivo, boleto_id = acordo_controller.gerar_boleto(acordo_id)
     response = make_response(pdf)
     response.headers["Content-Type"] = "application/pdf"
     response.headers["Content-Disposition"] = f"inline; filename={nome_arquivo}"
+    response.headers["X-Boleto-Id"] = str(boleto_id)
     return response
 
 
-@acordo_bp.route("/enviar_boleto", methods=["POST"])
+@acordo_bp.route("/enviar_boleto/<int:acordo_id>", methods=["POST"])
 @safe_route
-def enviar_boleto():
-    data = request.get_json()
-    acordo_id = data.get("acordo_id")
-    boleto_id = data.get("boleto_id")
-
-    if not boleto_id:
-        return jsonify({"erro": "boleto_id é obrigatório"}), 400
-
-    resultado = acordo_controller.enviar_boleto(acordo_id=acordo_id, boleto_id=boleto_id)
-    return jsonify(resultado), 200
+def enviar_boleto(acordo_id):
+    try:
+        resultado = acordo_controller.enviar_boleto(acordo_id)
+        return jsonify(resultado), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 400
 
 
 @acordo_bp.route("/boletos/<int:acordo_id>", methods=["GET"])
