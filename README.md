@@ -1,6 +1,7 @@
 # 💰 CobAle - Sistema de Cobrança
 
-CobAle é um sistema de cobrança desenvolvido em Flask como projeto pessoal. O objetivo é simular a estrutura de uma API completa com microsserviço, regras de negócio, organização em camadas e controle de acordos de pagamento sobre contratos em atraso.
+CobAle é um sistema de cobrança desenvolvido em Flask como projeto pessoal.
+O objetivo é simular a estrutura de uma API completa, organizada em camadas, com regras de negócio integradas e controle de clientes, contratos, acordos e boletos.
 
 ---
 
@@ -28,6 +29,19 @@ Armazena os dados dos clientes devedores.
 | numero   | String   | Sim         | Telefone com DDD               |
 | email    | String   | Sim         | Único                          |
 
+### 📍 Endereço
+Cada cliente pode ter um ou mais endereços vinculados.
+
+| Campo      | Tipo     | Obrigatório | Observações                    |
+|------------|----------|-------------|--------------------------------|
+| id         | Integer  | Sim         | Gerado automaticamente         |
+| rua        | String   | Sim         |                                |
+| numero     | String   | Sim         |                                |
+| cidade     | String   | Sim         |                                |
+| estado     | String   | Sim         | Sigla (2 letras)               |
+| cep        | String   | Sim         | Apenas números                 |
+| cliente_id | Integer  | Sim         | Referência ao cliente          |
+
 ---
 
 ### 📄 Contrato
@@ -54,10 +68,26 @@ Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (a
 | tipo_pagamento | String   | "avista" ou "parcelado"                     |
 | qtd_parcelas   | Integer  | Obrigatório se for parcelado                |
 | valor_total    | Float    | Já com juros e descontos aplicados          |
+| desconto       | Float    | Valor de desconto aplicado                  |
+| juros          | Float    | Valor total de juros                        |
 | vencimento     | Date     | Data de vencimento do acordo ou 1ª parcela  |
 | status         | String   | em andamento, finalizado, quebrado          |
 
 ---
+
+### 💳 Boletos
+Cada acordo pode gerar um ou mais boletos.
+
+| Campo          | Tipo     | Observações                                 |
+|----------------|----------|---------------------------------------------|
+| id             | Integer  | Gerado automaticamente                      |
+| acordo_id      | Integer  | Referência ao acordo                        |
+| nome_arquivo   | String   | Nome do arquivo PDF gerado                  |
+| criado_em      | DateTime | Data de criação                             |
+| enviado        | Boolean  | Status de envio                             |
+
+
+
 
 ## ⚙️ Como rodar localmente
 
@@ -96,13 +126,22 @@ Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (a
 
 ## 📥 Exemplos de Entrada (JSON)
 
-### 👨🏿 Criar Cliente
+### 👨🏿 Criar Cliente com Endereço
 ```json
 {
   "nome": "João da Silva",
   "cpf": "12345678901",
-  "numero": "11999998888",
-  "email": "joao.silva@email.com"
+  "telefone": "11999998888",
+  "email": "joao.silva@email.com",
+  "enderecos": [
+    {
+      "rua": "Rua das Flores",
+      "numero": "123",
+      "cidade": "São Paulo",
+      "estado": "SP",
+      "cep": "01001000"
+    }
+  ]
 }
 ```
 
@@ -133,6 +172,33 @@ Define a negociação feita sobre um contrato. Pode ser à vista ou parcelado (a
   "dias_em_atraso": 135,
   "tipo_pagamento": "parcelado",
   "quantidade_parcelas": 2,
-  "valor_entrada": 0
+  "valor_entrada": 200.00
 }
 ```
+
+## 📊 Regra de Negócio - Cálculo de Acordos
+
+   ## O cálculo de acordos segue as seguintes regras:
+
+   **Juros de mora: 0,5% ao dia, limitado a 100% do valor original.**
+   Faixas de desconto conforme atraso:
+      60 a 99 dias: até 10% (à vista) ou 3% (parcelado).
+      100 a 150 dias: até 20% (à vista) ou 8% (parcelado).
+      +150 dias: até 30% (à vista) ou 15% (parcelado).
+
+   **O desconto é proporcional dentro da faixa de atraso.**
+   Parcelamento:
+      Até 24 vezes.
+      Entrada mínima de R$ 100,00.
+      Valor da entrada não pode ser igual ou maior ao valor final.
+      Restante dividido igualmente entre as parcelas.
+
+   O endpoint retorna um JSON com:
+      valor original
+      dias em atraso
+      juros aplicados
+      desconto aplicado
+      valor final
+      simulação de parcelamento (quando aplicável)
+
+   ```

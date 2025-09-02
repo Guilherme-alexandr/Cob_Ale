@@ -1,5 +1,3 @@
-from flask import request, jsonify
-
 def calcular(payload):
     try:
         valor_original = float(payload.get('valor_original', 0))
@@ -17,18 +15,34 @@ def calcular(payload):
         raise ValueError("Parcelamento deve ser entre 2x e 24x.")
 
     juros_diario = 0.005
+    teto_juros = 1.0
+    entrada_minima_fixa = 100.0
+
     juros_total = valor_original * juros_diario * dias_em_atraso
+    juros_total = min(juros_total, valor_original * teto_juros)
     valor_com_juros = valor_original + juros_total
 
-    desconto = 0
+    desconto_max_avista = 0
+    desconto_max_parcelado = 0
+
     if 60 <= dias_em_atraso <= 99:
-        if tipo_pagamento == "avista":
-            desconto = 10
+        desconto_max_avista = 10
+        desconto_max_parcelado = 3
     elif 100 <= dias_em_atraso <= 150:
-        if tipo_pagamento == "avista":
-            desconto = 15
-        elif tipo_pagamento == "parcelado":
-            desconto = 5
+        desconto_max_avista = 20
+        desconto_max_parcelado = 8
+    elif dias_em_atraso > 150:
+        desconto_max_avista = 30
+        desconto_max_parcelado = 15
+
+    if desconto_max_avista or desconto_max_parcelado:
+        faixa_inicio = 60 if dias_em_atraso <= 99 else (100 if dias_em_atraso <= 150 else 151)
+        faixa_fim = 99 if dias_em_atraso <= 99 else (150 if dias_em_atraso <= 150 else dias_em_atraso)
+        proporcao = (dias_em_atraso - faixa_inicio) / (faixa_fim - faixa_inicio + 1)
+
+        desconto = desconto_max_avista * proporcao if tipo_pagamento == "avista" else desconto_max_parcelado * proporcao
+    else:
+        desconto = 0
 
     valor_desconto = valor_com_juros * (desconto / 100)
     valor_final = valor_com_juros - valor_desconto
@@ -38,14 +52,16 @@ def calcular(payload):
         "dias_em_atraso": dias_em_atraso,
         "tipo_pagamento": tipo_pagamento,
         "juros_total": round(juros_total, 2),
-        "percentual_desconto": desconto,
+        "percentual_desconto": round(desconto, 2),
         "valor_desconto": round(valor_desconto, 2),
         "valor_final": round(valor_final, 2)
     }
 
     if tipo_pagamento == "parcelado":
         if not valor_entrada or valor_entrada <= 0:
-            valor_entrada = round(valor_final * 0.10, 2)
+            valor_entrada = max(entrada_minima_fixa, 0.0)
+            if valor_entrada >= valor_final:
+                valor_entrada = valor_final * 0.1
         elif valor_entrada >= valor_final:
             raise ValueError("Valor de entrada não pode ser maior ou igual ao valor final.")
 
