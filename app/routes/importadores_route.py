@@ -53,6 +53,7 @@ def importar_exemplo_cliente():
 
 @import_bp.route("/importar-exemplo-contratos")
 def importar_exemplo_contratos():
+    global ja_importado
 
     if ja_importado:
         return jsonify({"mensagem": "Os dados já foram importados, não é possível rodar novamente."}), 403
