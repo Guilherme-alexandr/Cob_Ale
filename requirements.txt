@@ -14,3 +14,4 @@ psycopg2-binary==2.9.9
 pytest==8.2.2
 Flasgger==0.9.5
 reportlab==4.2.5
+weasyprint==61.2
