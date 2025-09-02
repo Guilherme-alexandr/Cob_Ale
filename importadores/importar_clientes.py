@@ -45,7 +45,7 @@ def importar_clientes_docx(caminho_arquivo, app):
                 cliente = Cliente.query.filter_by(cpf=cpf).first()
                 if cliente is not None:
                     cliente.nome = nome
-                    cliente.numero = telefone
+                    cliente.telefone = telefone
                     cliente.email = email
 
                     if rua or numero_end or cidade or estado or cep:
@@ -66,7 +66,7 @@ def importar_clientes_docx(caminho_arquivo, app):
                     cliente = Cliente(
                         nome=nome,
                         cpf=cpf,
-                        numero=telefone,
+                        telefone=telefone,
                         email=email
                     )
                     db.session.add(cliente)
