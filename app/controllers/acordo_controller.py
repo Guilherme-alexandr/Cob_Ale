@@ -10,7 +10,8 @@ from reportlab.graphics import renderPM
 from reportlab.graphics.barcode import code128
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib.units import mm
-import json, os, io, base64
+import json, os, io, base64, barcode
+from barcode.writer import ImageWriter
 from weasyprint import HTML
 
 
@@ -215,10 +216,12 @@ def gerar_boleto(acordo_id):
     nome_arquivo = f"boleto_{acordo.id}.pdf"
     caminho_pdf = os.path.join(pasta, nome_arquivo)
 
+    # Se já existe, retorna o PDF salvo
     if boleto and os.path.exists(caminho_pdf):
         with open(caminho_pdf, "rb") as f:
             return f.read(), boleto.nome_arquivo
 
+    # Coleta informações do boleto
     boleto_info, status = info_boleto(acordo_id)
     if status != 200:
         raise ValueError("Erro ao gerar informações do boleto.")
@@ -229,29 +232,31 @@ def gerar_boleto(acordo_id):
 
     if not codigo_barras.isdigit():
         raise ValueError("Código de barras deve ser uma sequência numérica.")
-    
-    barcode_obj = code128.Code128(codigo_barras, barHeight=20*mm, humanReadable=False)
-    drawing = Drawing(width=200*mm, height=25*mm)
-    drawing.add(barcode_obj)
 
+    # Geração do código de barras com python-barcode
+    barcode_class = barcode.get_barcode_class("code128")
+    barcode_obj = barcode_class(codigo_barras, writer=ImageWriter())
     buf_bar = io.BytesIO()
-    renderPM.drawToFile(drawing, buf_bar, fmt="PNG")
-    buf_bar.seek(0)
-    barcode_b64 = base64.b64encode(buf_bar.read()).decode("utf-8")
+    barcode_obj.write(buf_bar)
+    barcode_b64 = base64.b64encode(buf_bar.getvalue()).decode("utf-8")
 
+    # Logo em base64
     logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
     with open(logo_path, "rb") as f:
         logo_b64 = base64.b64encode(f.read()).decode("utf-8")
 
+    # Renderiza HTML + PDF
     html = render_template("boleto.html", boleto=boleto_info, barcode_img=barcode_b64, logo_b64=logo_b64)
     pdf = HTML(string=html).write_pdf()
 
     if not pdf or not isinstance(pdf, bytes):
         raise ValueError("Erro ao gerar o PDF do boleto.")
 
+    # Salva em disco
     with open(caminho_pdf, "wb") as f:
         f.write(pdf)
 
+    # Atualiza ou cria o registro do boleto no banco
     if not boleto:
         boleto = Boleto(
             acordo_id=acordo.id,
