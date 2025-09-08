@@ -10,7 +10,8 @@ from reportlab.graphics import renderPM
 from reportlab.graphics.barcode import code128
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib.units import mm
-import json, os, io, base64
+import json, os, io, base64, barcode
+from barcode.writer import ImageWriter
 from weasyprint import HTML
 
 
@@ -229,15 +230,12 @@ def gerar_boleto(acordo_id):
 
     if not codigo_barras.isdigit():
         raise ValueError("Código de barras deve ser uma sequência numérica.")
-    
-    barcode_obj = code128.Code128(codigo_barras, barHeight=20*mm, humanReadable=False)
-    drawing = Drawing(width=200*mm, height=25*mm)
-    drawing.add(barcode_obj)
 
+    barcode_class = barcode.get_barcode_class("code128")
+    barcode_obj = barcode_class(codigo_barras, writer=ImageWriter())
     buf_bar = io.BytesIO()
-    renderPM.drawToFile(drawing, buf_bar, fmt="PNG")
-    buf_bar.seek(0)
-    barcode_b64 = base64.b64encode(buf_bar.read()).decode("utf-8")
+    barcode_obj.write(buf_bar)
+    barcode_b64 = base64.b64encode(buf_bar.getvalue()).decode("utf-8")
 
     logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
     with open(logo_path, "rb") as f:
