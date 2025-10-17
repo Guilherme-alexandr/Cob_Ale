@@ -14,7 +14,7 @@ python-multipart==0.0.9
 
 # Manipulação de documentos
 python-docx==1.1.0
-docxtpl==0.18.4
+docxtpl>=0.18.0
 docx2pdf==0.9.3
 Pillow==10.0.1
 
