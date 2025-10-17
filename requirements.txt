@@ -1,20 +1,32 @@
+# Flask e extensões
 flask==3.0.3
 flask_sqlalchemy==3.1.1
 flask_marshmallow==1.2.1
 marshmallow==3.21.1
 marshmallow-sqlalchemy==0.29.0
 flask-cors==4.0.0
-flask-restx
+flask-restx==1.1.0
 flask-migrate==3.1.0
+
+# Config e utilitários
 python-dotenv==1.0.1
 python-multipart==0.0.9
+
+# Manipulação de documentos
 python-docx==1.1.0
+docxtpl==0.18.4
+docx2pdf==0.9.3
+Pillow==10.0.1
+
+# Geração de boletos e códigos de barras
+python-barcode==0.14.0
+reportlab==4.2.5
+
+# Outras ferramentas
 pandas==2.2.2
 psycopg2-binary==2.9.9
 pytest==8.2.2
 Flasgger==0.9.5
-reportlab==4.2.5
-Pillow==10
 weasyprint==61.2
 qrcode==7.3.1
-python-barcode==0.14.0
+pywin32==305
