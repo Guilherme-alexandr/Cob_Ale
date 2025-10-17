@@ -97,12 +97,15 @@ def info_boleto(acordo_id):
 @acordo_bp.route("/gerar_boleto/<int:acordo_id>", methods=["GET"])
 @safe_route
 def gerar_boleto(acordo_id):
-    pdf, nome_arquivo, boleto_id = acordo_controller.gerar_boleto(acordo_id)
-    response = make_response(pdf)
-    response.headers["Content-Type"] = "application/pdf"
-    response.headers["Content-Disposition"] = f"inline; filename={nome_arquivo}"
-    response.headers["X-Boleto-Id"] = str(boleto_id)
-    return response
+    try:
+        pdf, nome_arquivo, boleto_id = acordo_controller.gerar_boleto_novo(acordo_id)
+        response = make_response(pdf)
+        response.headers["Content-Type"] = "application/pdf"
+        response.headers["Content-Disposition"] = f"inline; filename={nome_arquivo}"
+        response.headers["X-Boleto-Id"] = str(boleto_id)
+        return response
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 
 @acordo_bp.route("/enviar_boleto/<int:acordo_id>", methods=["POST"])
