@@ -1,12 +1,8 @@
-from flask import request, render_template, make_response, current_app
+from flask import request, make_response, current_app
 from flask_restx import Namespace, Resource, fields
 from app.controllers import acordo_controller
 from app.controllers.acordo_controller import simular_acordo
 from weasyprint import HTML
-import qrcode, io, base64, os, barcode
-from barcode.writer import ImageWriter
-
-
 
 acordo_ns = Namespace("acordos", description="Operações com acordos")
 
@@ -111,73 +107,65 @@ class AcordoSimulacao(Resource):
             return {"erro": "Erro interno ao processar a simulação"}, 500
         
 @acordo_ns.route("/info_boleto/<int:acordo_id>")
-@acordo_ns.param("acordo_id", "ID do acordo")
+@acordo_ns.param("acordo_id", "ID do acordo para consulta das informações do boleto", _in="path", required=True)
 class InfoBoleto(Resource):
+    @acordo_ns.response(200, "Informações do boleto retornadas com sucesso")
+    @acordo_ns.response(404, "Acordo, contrato ou cliente não encontrado")
+    @acordo_ns.response(500, "Erro interno ao buscar as informações do boleto")
     @acordo_ns.marshal_with(boleto_model)
     def get(self, acordo_id):
-        """Obter informações do boleto de um acordo pelo ID"""
+        """
+        Retorna as informações necessárias para gerar o boleto do acordo especificado.
+
+        As informações incluem:
+        - Dados do cliente e endereço
+        - Código de barras e linha digitável
+        - Valores de documento, juros e desconto
+        - Datas de vencimento, processamento e emissão
+        - Informações adicionais para montagem do boleto
+
+        Essa rota **não gera o PDF**, apenas retorna os dados em JSON.
+
+        **Formato do retorno:** conforme `boleto_model`
+        """
         try:
             boleto_info, status = acordo_controller.info_boleto(acordo_id)
             if status != 200:
                 acordo_ns.abort(status, boleto_info.get("erro", "Erro ao obter boleto"))
             return boleto_info
         except Exception as e:
-            print(f"Erro ao obter informações do boleto: {e}")
+            current_app.logger.exception("Erro ao obter informações do boleto")
             acordo_ns.abort(500, str(e))
 
 
+
 @acordo_ns.route("/gerar_boleto/<int:acordo_id>")
-@acordo_ns.param("acordo_id", "ID do acordo")
-class BoletoPDF(Resource):
+@acordo_ns.param("acordo_id", "ID do acordo para o qual o boleto será gerado", _in="path", required=True)
+class GerarBoleto(Resource):
+    @acordo_ns.response(200, "Boleto gerado com sucesso (PDF)")
+    @acordo_ns.response(404, "Acordo não encontrado ou dados do boleto indisponíveis")
+    @acordo_ns.response(500, "Erro interno ao gerar o boleto")
+    @acordo_ns.produces(["application/pdf"])
     def get(self, acordo_id):
-        """Gerar PDF do boleto de um acordo pelo ID"""
+        """
+        Gera e retorna o boleto em formato PDF para o acordo especificado.
+
+        O boleto é montado a partir de um template `.docx`, convertido para PDF e enviado inline.
+        
+        **Cabeçalhos de resposta adicionais:**
+        - `X-Boleto-Id`: ID do boleto gerado no banco de dados.
+        """
         try:
-            boleto_info, status = acordo_controller.info_boleto(acordo_id)
-            if status != 200:
-                return boleto_info, status
-
-            qr = qrcode.QRCode(box_size=4, border=1)
-            qr.add_data(f"https://www.seuboleto.com.br/gerar?codigo={boleto_info['nosso_numero']}")
-            qr.make(fit=True)
-            img_qr = qr.make_image(fill_color="black", back_color="white")
-            buf_qr = io.BytesIO()
-            img_qr.save(buf_qr, format="PNG")
-            qr_code_b64 = base64.b64encode(buf_qr.getvalue()).decode("utf-8")
-
-            CODE128 = barcode.get_barcode_class('code128')
-            bar = CODE128(boleto_info['nosso_numero'], writer=ImageWriter())
-            buf_bar = io.BytesIO()
-            bar.write(buf_bar)
-            barcode_b64 = base64.b64encode(buf_bar.getvalue()).decode("utf-8")
-
-            logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
-            with open(logo_path, "rb") as f:
-                logo_b64 = base64.b64encode(f.read()).decode("utf-8")
-
-            html = render_template(
-                "boleto.html",
-                boleto=boleto_info,
-                qr_code=qr_code_b64,
-                barcode_img=barcode_b64,
-                logo_b64=logo_b64
-            )
-
-            pdf = HTML(string=html).write_pdf()
-
-            pasta_boletos = os.environ.get("PASTA_BOLETOS", os.path.join(current_app.root_path, "..", "boletos"))
-            os.makedirs(pasta_boletos, exist_ok=True)
-            caminho_pdf = os.path.join(pasta_boletos, f"boleto_{acordo_id}.pdf")
-            with open(caminho_pdf, "wb") as f:
-                f.write(pdf)
-
+            pdf, nome_arquivo, boleto_id = acordo_controller.gerar_boleto_novo(acordo_id)
             response = make_response(pdf)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename=boleto_{acordo_id}.pdf'
+            response.headers["Content-Type"] = "application/pdf"
+            response.headers["Content-Disposition"] = f"inline; filename={nome_arquivo}"
+            response.headers["X-Boleto-Id"] = str(boleto_id)
             return response
-
         except Exception as e:
-            print(f"Erro ao gerar PDF do boleto: {e}")
+            current_app.logger.exception("Erro ao gerar boleto")
             return {"erro": str(e)}, 500
+
 
 @acordo_ns.route("/enviar_boleto/<int:boleto_id>")
 @acordo_ns.param("boleto_id", "ID do boleto")
