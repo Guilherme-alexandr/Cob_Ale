@@ -1,4 +1,4 @@
-from flask import current_app
+from flask import current_app, render_template
 from datetime import datetime, date
 from app.database import db
 from app.models.cliente import Cliente
@@ -6,14 +6,14 @@ from app.models.acordo import Acordo, Boleto
 from app.models.contrato import Contrato
 from importadores import boletos
 from calculadora import calcular
-import json, os, barcode
+from reportlab.graphics import renderPM
+from reportlab.graphics.barcode import code128
+from reportlab.graphics.shapes import Drawing
+from reportlab.lib.units import mm
+import json, os, io, base64, barcode
 from barcode.writer import ImageWriter
-from docxtpl import DocxTemplate, InlineImage
-from docx2pdf import convert
-from docx.shared import Mm
-import pythoncom
-pythoncom.CoInitialize()
-pythoncom.CoUninitialize()
+from weasyprint import HTML
+
 
 # ------------------- Helpers -------------------
 
@@ -157,166 +157,119 @@ def simular_acordo(payload):
 # ------------------- Boletos -------------------
 
 def info_boleto(acordo_id):
-    try:
-        current_app.logger.info(f"🧾 [DEBUG] Buscando info do boleto para acordo_id={acordo_id}")
-        acordo = Acordo.query.get(acordo_id)
-        if not acordo:
-            return {"erro": "Acordo não encontrado"}, 404
+    acordo = Acordo.query.get(acordo_id)
+    if not acordo:
+        return {"erro": "Acordo não encontrado"}, 404
 
-        contrato = acordo.contrato
-        if not contrato:
-            return {"erro": "Contrato não encontrado"}, 404
+    contrato = acordo.contrato
+    if not contrato:
+        return {"erro": "Contrato não encontrado"}, 404
 
-        cliente = contrato.cliente
-        if not cliente:
-            return {"erro": "Cliente não encontrado"}, 404
+    cliente = contrato.cliente
+    if not cliente:
+        return {"erro": "Cliente não encontrado"}, 404
+    
+    endereco = cliente.enderecos[0] if cliente.enderecos else None
 
-        endereco = cliente.enderecos[0] if cliente.enderecos else None
-        current_app.logger.info(f"✅ Cliente: {cliente.nome}")
+    qtd_parcelas = acordo.qtd_parcelas if acordo.qtd_parcelas > 0 else 1
+    valor_parcela = (json.loads(acordo.parcelamento_json).get("valor_parcela", acordo.valor_total / qtd_parcelas) 
+                     if acordo.parcelamento_json else acordo.valor_total / qtd_parcelas)
+    entrada = (json.loads(acordo.parcelamento_json).get("entrada", 0) 
+               if acordo.parcelamento_json else 0)
 
-        qtd_parcelas = acordo.qtd_parcelas if acordo.qtd_parcelas > 0 else 1
-        valor_parcela = (
-            json.loads(acordo.parcelamento_json).get("valor_parcela", acordo.valor_total / qtd_parcelas)
-            if acordo.parcelamento_json else acordo.valor_total / qtd_parcelas
-        )
-        entrada = (
-            json.loads(acordo.parcelamento_json).get("entrada", 0)
-            if acordo.parcelamento_json else 0
-        )
+    demonstrativo = (
+        f"Acordo formalizado para pagamento: R$ {entrada:.2f} "
+        f"+ {acordo.qtd_parcelas} parcelas: R$ {valor_parcela:.2f}; "
+        f"vencimento {acordo.vencimento.strftime('%d/%m/%Y')}"
+    )
+    codigo_barras, linha_digitavel = gerar_linha_digitavel(acordo.id)
 
-        demonstrativo = (
-            f"Acordo formalizado para pagamento: R$ {entrada:.2f} "
-            f"+ {acordo.qtd_parcelas} parcelas: R$ {valor_parcela:.2f}; "
-            f"vencimento {acordo.vencimento.strftime('%d/%m/%Y')}"
-        )
-        current_app.logger.info(f"🧩 Demonstrativo: {demonstrativo}")
+    boleto_info = {
+        "sacado": cliente.nome,
+        "vencimento": acordo.vencimento.strftime("%d/%m/%Y"),
+        "valor_documento": round(acordo.valor_total, 2),
+        "filial_loja": contrato.filial,
+        "demonstrativo": demonstrativo,
+        "desconto": float(acordo.desconto or 0),
+        "juros": float(acordo.juros or 0),
+        "nosso_numero": str(acordo.id).zfill(11),
+        "linha_digitavel": linha_digitavel,
+        "codigo_barras": codigo_barras,
 
-        current_app.logger.info("🧩 Gerando linha digitável...")
-        codigo_barras, linha_digitavel = gerar_linha_digitavel(acordo)
-        nosso_numero = str(acordo.id).zfill(11)
-        current_app.logger.info(f"🔥 Código de barras: {codigo_barras} | Linha digitável: {linha_digitavel} | Nosso número: {nosso_numero}")
+        "cep_sacado": endereco.cep if endereco else "00000-000",
+        "endereco_sacado": f"{endereco.rua}, {endereco.numero}" if endereco else "Endereço não informado",
+        "cidade_sacado": endereco.cidade if endereco else "Cidade não informada",
+        "estado_sacado": endereco.estado if endereco else "UF"
+    }
 
-        base_dir = os.path.dirname(__file__)
-        caminho_img = os.path.join(base_dir, f"codigo_barras_{acordo.id}.png")
-
-        info = {
-            "acordo_id": acordo.id,
-            "cliente": cliente.nome,
-            "contrato": getattr(contrato, "numero", "N/A"),
-            "sacado": cliente.nome,
-            "vencimento": acordo.vencimento.strftime("%d/%m/%Y"),
-            "valor_documento": float(acordo.valor_total),
-            "filial_loja": getattr(contrato, "filial", "N/A"),
-            "demonstrativo": demonstrativo,
-            "desconto": float(acordo.desconto or 0),
-            "juros": float(acordo.juros or 0),
-            "nosso_numero": nosso_numero,
-            "linha_digitavel": linha_digitavel,
-            "codigo_barras": codigo_barras,
-            "cep_sacado": endereco.cep if endereco else "00000-000",
-            "endereco_sacado": f"{endereco.rua}, {endereco.numero}" if endereco else "Endereço não informado",
-            "cidade_sacado": endereco.cidade if endereco else "Cidade não informada",
-            "estado_sacado": endereco.estado if endereco else "UF",
-            "data_documento": datetime.utcnow().strftime("%d/%m/%Y"),
-            "data_processamento": datetime.utcnow().strftime("%d/%m/%Y"),
-            "caminho_img": caminho_img
-        }
-
-        return info, 200
-
-    except Exception as e:
-        current_app.logger.error("🔥 ERRO DETALHADO info_boleto:")
-        current_app.logger.exception(e)
-        return {"erro": str(e)}, 500
+    return boleto_info, 200
 
 
-def gerar_boleto_novo(acordo_id):
-    try:
-        info, status = info_boleto(acordo_id)
-        if status != 200:
-            return None, info.get("erro", "Erro ao gerar boleto"), None
+def gerar_boleto(acordo_id):
+    acordo = Acordo.query.get_or_404(acordo_id)
+    boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
 
-        acordo = Acordo.query.get_or_404(acordo_id)
-        boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
+    pasta = _pasta_boletos()
+    if not os.path.exists(pasta):
+        os.makedirs(pasta)
 
-        pasta = _pasta_boletos()
-        if not os.path.exists(pasta):
-            os.makedirs(pasta)
+    nome_arquivo = f"boleto_{acordo.id}.pdf"
+    caminho_pdf = os.path.join(pasta, nome_arquivo)
 
-        nome_arquivo = f"boleto_{acordo.id}.pdf"
-        caminho_pdf = os.path.join(pasta, nome_arquivo)
-
-        if boleto and os.path.exists(caminho_pdf):
-            current_app.logger.info(f"📄 Boleto já existente encontrado: {caminho_pdf}")
-            with open(caminho_pdf, "rb") as f:
-                pdf_bytes = f.read()
-            return pdf_bytes, nome_arquivo, boleto.id
-        
-        current_app.logger.info(f"[DEBUG] Iniciando geração de boleto para acordo_id={acordo_id}")
-
-        base_dir = os.path.dirname(__file__)
-        template_path = os.path.join(base_dir, "../templates/Boleto CobAle.docx")
-        current_app.logger.info(f"🗂️ Template path usado: {template_path}")
-        doc = DocxTemplate(template_path)
-
-        caminho_img_sem_ext = info["caminho_img"].replace(".png", "")
-        ean = barcode.get("code128", info["codigo_barras"], writer=ImageWriter())
-        ean.save(caminho_img_sem_ext)
-        caminho_img_final = caminho_img_sem_ext + ".png"
-        info["caminho_img"] = caminho_img_final
-
-        if not os.path.exists(caminho_img_final):
-            raise FileNotFoundError(f"Código de barras não foi gerado: {caminho_img_final}")
-
-        info_boleto_docx = info.copy()
-        info_boleto_docx["codigo_barras_img"] = InlineImage(doc, caminho_img_final, width=Mm(80))
-
-        current_app.logger.info("📝 Renderizando DOCX...")
-        doc.render(info_boleto_docx)
-
-        temp_docx = os.path.join(base_dir, f"temp_boleto_{acordo.id}.docx")
-        doc.save(temp_docx)
-
-        try:
-            pythoncom.CoInitialize()
-            convert(temp_docx, caminho_pdf)
-            current_app.logger.info(f"✅ PDF convertido com sucesso: {caminho_pdf}")
-        except Exception as e:
-            current_app.logger.error(f"❌ Erro ao converter DOCX para PDF: {e}", exc_info=True)
-            raise
-        finally:
-            pythoncom.CoUninitialize()
-
-        if os.path.exists(temp_docx):
-            os.remove(temp_docx)
-        if os.path.exists(caminho_img_final):
-            os.remove(caminho_img_final)
-
-        if not boleto:
-            boleto = Boleto(
-                acordo_id=acordo.id,
-                nome_arquivo=nome_arquivo,
-                criado_em=datetime.utcnow(),
-                enviado=False
-            )
-            db.session.add(boleto)
-        else:
-            boleto.nome_arquivo = nome_arquivo
-            boleto.criado_em = datetime.utcnow()
-
-        db.session.commit()
-
+    if boleto and os.path.exists(caminho_pdf):
         with open(caminho_pdf, "rb") as f:
-            pdf_bytes = f.read()
+            return f.read(), boleto.nome_arquivo
 
-        current_app.logger.info(f"✅ Boleto gerado com sucesso: {caminho_pdf}")
-        return pdf_bytes, nome_arquivo, boleto.id
+    boleto_info, status = info_boleto(acordo_id)
+    if status != 200:
+        raise ValueError("Erro ao gerar informações do boleto.")
 
+    codigo_barras, linha_digitavel = gerar_linha_digitavel(acordo)
+    boleto_info["linha_digitavel"] = linha_digitavel
+    boleto_info["codigo_barras"] = codigo_barras
+
+    if not codigo_barras.isdigit():
+        raise ValueError("Código de barras deve ser uma sequência numérica.")
+
+    barcode_class = barcode.get_barcode_class("code128")
+    barcode_obj = barcode_class(codigo_barras, writer=ImageWriter())
+    buf_bar = io.BytesIO()
+    barcode_obj.write(buf_bar)
+    barcode_b64 = base64.b64encode(buf_bar.getvalue()).decode("utf-8")
+
+    logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
+    with open(logo_path, "rb") as f:
+        logo_b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    html = render_template("boleto.html", boleto=boleto_info, barcode_img=barcode_b64, logo_b64=logo_b64)
+    pdf = HTML(string=html).write_pdf()
+
+    if not pdf or not isinstance(pdf, bytes):
+        raise ValueError("Erro ao gerar o PDF do boleto.")
+
+    with open(caminho_pdf, "wb") as f:
+        f.write(pdf)
+
+    if not boleto:
+        boleto = Boleto(
+            acordo_id=acordo.id,
+            nome_arquivo=nome_arquivo,
+            criado_em=datetime.utcnow(),
+            enviado=False
+        )
+        db.session.add(boleto)
+    else:
+        boleto.nome_arquivo = nome_arquivo
+        boleto.criado_em = datetime.utcnow()
+
+    try:
+        db.session.commit()
     except Exception as e:
-        current_app.logger.error("🔥 ERRO DETALHADO gerar_boleto_novo:")
-        current_app.logger.exception(e)
+        db.session.rollback()
+        print(f"Erro ao salvar boleto no banco: {e}")
         raise
 
+    return pdf, nome_arquivo
 
 
 def enviar_boleto(acordo_id):
@@ -336,7 +289,7 @@ def enviar_boleto(acordo_id):
 
     if not os.path.exists(caminho_pdf):
         print(f"[INFO] Boleto não encontrado em disco, gerando novamente: {caminho_pdf}")
-        gerar_boleto_novo(acordo.id)
+        gerar_boleto(acordo.id)
 
     if not os.path.exists(caminho_pdf):
         raise FileNotFoundError(f"Boleto não encontrado nem gerado: {caminho_pdf}")
@@ -388,53 +341,38 @@ def deletar_todos_boletos():
         return {"erro": str(e)}, 500
     
 
-def gerar_linha_digitavel(acordo, banco="237", carteira="09", agencia="1234", conta="56789"):
-    """
-    Gera o código de barras e a linha digitável do boleto.
-
-    :param acordo: Objeto Acordo
-    :param banco: Código do banco (default 237 - Bradesco)
-    :param carteira: Carteira do boleto
-    :param agencia: Número da agência
-    :param conta: Número da conta
-    :return: tuple(codigo_barras, linha_digitavel)
-    """
-
-    # Dados do boleto
+def gerar_linha_digitavel(acordo_id, banco="237", carteira="09", agencia="1234", conta="56789"):
+    acordo = Acordo.query.get_or_404(acordo_id)
     codigo_banco = banco
     moeda = "9"
     data_base = date(1997, 10, 7)
     fator_vencimento = (acordo.vencimento.date() - data_base).days
     fator_vencimento = str(fator_vencimento).zfill(4)
-
-    valor = int(round(acordo.valor_total * 100))  # valor em centavos
+    valor = int(acordo.valor_total * 100)
     valor_str = str(valor).zfill(10)
-
     nosso_numero = str(acordo.id).zfill(11)
     campo_livre = f"{carteira}{nosso_numero}{agencia}{conta}".ljust(25, "0")
-
     codigo_sem_dv = f"{codigo_banco}{moeda}{fator_vencimento}{valor_str}{campo_livre}"
     dv = calcular_dv(codigo_sem_dv)
     codigo_barras = f"{codigo_banco}{moeda}{dv}{fator_vencimento}{valor_str}{campo_livre}"
-
-    # Formata linha digitável em blocos
-    bloco1 = f"{codigo_barras[0:5]}.{codigo_barras[5:10]}"
-    bloco2 = f"{codigo_barras[10:15]}.{codigo_barras[15:21]}"
-    bloco3 = f"{codigo_barras[21:26]}.{codigo_barras[26:32]}"
-    bloco4 = codigo_barras[32]
-    bloco5 = codigo_barras[33:]
-
-    linha_digitavel = f"{bloco1} {bloco2} {bloco3} {bloco4} {bloco5}"
-
+    linha_digitavel = (
+        f"{codigo_barras[0:5]}.{codigo_barras[5:10]} "
+        f"{codigo_barras[10:15]}.{codigo_barras[15:21]} "
+        f"{codigo_barras[21:26]}.{codigo_barras[26:32]} "
+        f"{codigo_barras[32]} "
+        f"{codigo_barras[33:]}"
+    )
+    
+    print(f"Código de Barras: {codigo_barras} | Linha Digitável: {linha_digitavel}")
+    current_app.logger.info(f"Código de Barras: {codigo_barras} | Linha Digitável: {linha_digitavel}")
     return codigo_barras, linha_digitavel
 
-
 def calcular_dv(codigo):
-    """
-    Calcula o dígito verificador usando módulo 11.
-    """
+
     pesos = [2,3,4,5,6,7,8,9]
-    soma = sum(int(n) * pesos[i % len(pesos)] for i, n in enumerate(reversed(codigo)))
+    soma = 0
+    for i, n in enumerate(reversed(codigo)):
+        soma += int(n) * pesos[i % len(pesos)]
     resto = soma % 11
     dv = 11 - resto
     if dv > 9:
