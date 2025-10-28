@@ -22,3 +22,4 @@ htmlcov/
 *.sublime-workspace
 img/
 boletos/
+migrations/

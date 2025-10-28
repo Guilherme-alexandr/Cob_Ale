@@ -1,3 +1,4 @@
+from flask import jsonify
 from app.database import db
 from app.models.cliente import Cliente, Endereco
 
@@ -72,19 +73,16 @@ def deletar_cliente(id):
     return {"mensagem": "Cliente deletado com sucesso"}
 
 
-def buscar_cliente_por_cpf(cpf):
-    cliente = Cliente.query.filter_by(cpf=cpf).first()
-    if not cliente:
-        return None
-    return cliente_to_dict(cliente)
-
-
-def buscar_clientes_por_nome(nome):
-    clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
+def buscar_clientes_por_cpf(cpf):
+    clientes = Cliente.query.filter(Cliente.cpf.like(f"{cpf}%")).all()
     if not clientes:
         return []
     return [cliente_to_dict(c) for c in clientes]
 
+
+def buscar_clientes_por_nome(nome):
+    clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
+    return jsonify([cliente_to_dict(c) for c in clientes])
 
 def excluir_todos_clientes():
     try:

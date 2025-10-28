@@ -10,6 +10,7 @@ if db_url.startswith("postgres://"):
 class Config:
     SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_SECRET_KEY = "chave-de-acesso-jwt"
 
     MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
     MAIL_PORT = int(os.getenv("MAIL_PORT", 465))

@@ -255,7 +255,7 @@ def gerar_boleto_novo(acordo_id):
         current_app.logger.info(f"[DEBUG] Iniciando geração de boleto para acordo_id={acordo_id}")
 
         base_dir = os.path.dirname(__file__)
-        template_path = os.path.join(base_dir, "../templates/Boleto CobAle.docx")
+        template_path = os.path.join(base_dir, r"C:\Users\guilh\Desktop\Meus projetos\Cob_Ale\importadores\Boleto CobAle.docx")
         current_app.logger.info(f"🗂️ Template path usado: {template_path}")
         doc = DocxTemplate(template_path)
 

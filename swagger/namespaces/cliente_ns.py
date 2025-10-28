@@ -75,10 +75,10 @@ class ClientePorCPF(Resource):
     @cliente_ns.marshal_with(cliente_model)
     def get(self, cpf):
         """Buscar cliente pelo CPF"""
-        cliente = cliente_controller.buscar_cliente_por_cpf(cpf)
-        if not cliente:
+        clientes = cliente_controller.buscar_clientes_por_cpf(cpf)
+        if not clientes:
             cliente_ns.abort(404, "Cliente não encontrado")
-        return cliente
+        return clientes
 
 
 @cliente_ns.route("/buscar_por_nome/<string:nome>")

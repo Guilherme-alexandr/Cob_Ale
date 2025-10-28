@@ -16,10 +16,6 @@ def listar():
 def obter(id):
     return cliente_controller.obter_cliente(id)
 
-@cliente_bp.route("/buscar_por_nome/<string:nome>", methods=["GET"])
-def buscar_por_nome(nome):
-    return cliente_controller.buscar_clientes_por_nome(nome)
-
 @cliente_bp.route("/<int:id>", methods=["PUT"])
 def atualizar(id):
     data = request.get_json()
@@ -31,7 +27,11 @@ def deletar(id):
 
 @cliente_bp.route("/buscar_por_cpf/<string:cpf>", methods=["GET"])
 def buscar_por_cpf(cpf):
-    return cliente_controller.buscar_cliente_por_cpf(cpf)
+    return cliente_controller.buscar_clientes_por_cpf(cpf)
+
+@cliente_bp.route("/buscar_por_nome/<string:nome>", methods=["GET"])
+def buscar_por_nome(nome):
+    return cliente_controller.buscar_clientes_por_nome(nome)
 
 @cliente_bp.route("/todos", methods=["DELETE"])
 def deletar_todos():
