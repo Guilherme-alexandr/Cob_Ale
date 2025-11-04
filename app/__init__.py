@@ -34,7 +34,7 @@ def create_app():
     app.register_blueprint(contrato_bp, url_prefix="/contratos")
     app.register_blueprint(acordo_bp, url_prefix="/acordos")
     app.register_blueprint(import_bp)
-    app.register_blueprint(usuario_bp, url_prefix="/user")
+    app.register_blueprint(usuario_bp, url_prefix="/usuarios")
 
     importadores_path = os.path.join(os.path.dirname(__file__), "..", "importadores")
 

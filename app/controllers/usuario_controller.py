@@ -67,14 +67,15 @@ def login_usuario(data):
         return {"erro": "Credenciais inválidas."}, 401
     
     access_token = create_access_token(
-        identity={
-            "id": usuario.id,
+        identity=str(usuario.id),
+        additional_claims={
             "nome": usuario.nome,
             "login": usuario.login,
             "cargo": usuario.cargo
         },
         expires_delta=timedelta(days=1)
     )
+
 
     return {
         "mensagem": "Login realizado com sucesso.",

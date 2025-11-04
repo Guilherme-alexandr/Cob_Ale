@@ -15,3 +15,11 @@ class Usuario(db.Model):
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha, senha)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "login": self.login,
+            "cargo": self.cargo
+        }
