@@ -90,6 +90,50 @@ def obter_acordo(id):
 def obter_acordo_por_contrato(numero_contrato):
     return Acordo.query.filter_by(contrato_id=numero_contrato).first()
 
+def cliente_por_acordo(status: str):
+    """
+    Retorna clientes com ou sem acordo, conforme o status informado.
+    status pode ser: 'em andamento', 'concluido', 'cancelado' ou 'sem_acordo'
+    """
+    clientes = []
+
+    if status == "sem_acordo":
+        # Busca clientes que NÃO possuem nenhum acordo
+        subquery = db.session.query(Acordo.contrato_id).distinct()
+        contratos_sem_acordo = Contrato.query.filter(~Contrato.numero_contrato.in_(subquery)).all()
+
+        for contrato in contratos_sem_acordo:
+            cliente = Cliente.query.get(contrato.cliente_id)
+            if cliente:
+                clientes.append({
+                    "cliente_id": cliente.id,
+                    "cliente_nome": cliente.nome,
+                    "contrato_numero": contrato.numero_contrato,
+                    "status_acordo": "Sem acordo"
+                })
+
+    elif status in ["em andamento", "concluido", "cancelado"]:
+        # Busca clientes que possuem acordo com o status informado
+        acordos = Acordo.query.filter_by(status=status).all()
+
+        for acordo in acordos:
+            contrato = Contrato.query.filter_by(numero_contrato=acordo.contrato_id).first()
+            if contrato:
+                cliente = Cliente.query.get(contrato.cliente_id)
+                if cliente:
+                    clientes.append({
+                        "acordo_id": acordo.id,
+                        "cliente_id": cliente.id,
+                        "cliente_nome": cliente.nome,
+                        "contrato_numero": contrato.numero_contrato,
+                        "status_acordo": acordo.status
+                    })
+    else:
+        raise ValueError("Status inválido. Use 'em andamento', 'concluido', 'cancelado' ou 'sem_acordo'.")
+
+    return clientes
+
+
 
 def atualizar_acordo(id, data):
     acordo = Acordo.query.get(id)

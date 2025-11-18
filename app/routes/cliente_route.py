@@ -27,11 +27,41 @@ def deletar(id):
 
 @cliente_bp.route("/buscar_por_cpf/<string:cpf>", methods=["GET"])
 def buscar_por_cpf(cpf):
-    return cliente_controller.buscar_clientes_por_cpf(cpf)
+    try:
+        clientes = cliente_controller.buscar_clientes_por_cpf(cpf)
+        if not clientes:
+            return jsonify({"error": "Nenhum cliente encontrado com este CPF"}), 404
+        return jsonify(clientes)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except Exception as e:
+        print("Erro ao buscar clientes por CPF:", e)
+        return jsonify({"erro": "Erro interno no servidor"}), 500
 
 @cliente_bp.route("/buscar_por_nome/<string:nome>", methods=["GET"])
 def buscar_por_nome(nome):
-    return cliente_controller.buscar_clientes_por_nome(nome)
+    try:
+        clientes = cliente_controller.buscar_clientes_por_nome(nome)
+        if not clientes:
+            return jsonify({"error": "Nenhum cliente encontrado com este nome"}), 404
+        return jsonify(clientes)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except Exception as e:
+        print("Erro ao buscar clientes por nome:", e)
+        return jsonify({"erro": "Erro interno no servidor"}), 500
+    
+@cliente_bp.route("/buscar_por_telefone/<string:telefone>", methods=["GET"])
+def buscar_por_telefone(telefone):
+    try:
+        clientes = cliente_controller.buscar_clientes_por_telefone(telefone)
+        if not clientes:
+            return jsonify({"error": "Nenhum cliente encontrado com esse telefone"}), 404
+        return jsonify(clientes)
+    except Exception as e:
+        print("Erro ao buscar cliente por telefone:", e)
+        return jsonify({"erro": "Erro interno no servidor"}), 500
+
 
 @cliente_bp.route("/todos", methods=["DELETE"])
 def deletar_todos():

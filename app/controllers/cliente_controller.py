@@ -1,6 +1,7 @@
 from flask import jsonify
 from app.database import db
 from app.models.cliente import Cliente, Endereco
+from app.models.contrato import Contrato
 import os
 from docx import Document
 import re
@@ -71,22 +72,36 @@ def atualizar_cliente(id, data):
 def deletar_cliente(id):
     cliente = Cliente.query.get(id)
     if not cliente:
-        return None
+        return {"erro": "Cliente não encontrado."}
+    
+    contratos = Contrato.query.filter_by(cliente_id=id).all()
+    if contratos:
+        for contrato in contratos:
+            db.session.delete(contrato)
+        
+        db.session.commit()
     db.session.delete(cliente)
     db.session.commit()
-    return {"mensagem": "Cliente deletado com sucesso"}
+    return {"mensagem": "Cliente e seus contratos excluídos com sucesso."}
 
 
-def buscar_clientes_por_cpf(cpf):
+def buscar_clientes_por_cpf(cpf: str):
+    if not cpf:
+        raise ValueError("CPF não pode ser vazio.")
     clientes = Cliente.query.filter(Cliente.cpf.like(f"{cpf}%")).all()
-    if not clientes:
-        return []
     return [cliente_to_dict(c) for c in clientes]
 
-
-def buscar_clientes_por_nome(nome):
+def buscar_clientes_por_nome(nome: str):
+    if not nome:
+        raise ValueError("Nome não pode ser vazio.")
     clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
-    return jsonify([cliente_to_dict(c) for c in clientes])
+    return [cliente_to_dict(c) for c in clientes]
+
+def buscar_clientes_por_telefone(telefone):
+    cliente = Cliente.query.filter_by(telefone=telefone).first()
+    if not cliente:
+        return []
+    return [cliente_to_dict(cliente)]
 
 def excluir_todos_clientes():
     try:
