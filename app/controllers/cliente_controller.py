@@ -1,12 +1,23 @@
+from flask import jsonify
 from app.database import db
 from app.models.cliente import Cliente, Endereco
+from app.models.contrato import Contrato
+from datetime import datetime
+from flask_jwt_extended import create_access_token
+from datetime import timedelta
+import os
+from docx import Document
+import re
+
+
 
 def criar_cliente(data):
     cliente = Cliente(
         nome=data["nome"],
         cpf=data["cpf"],
         telefone=data["telefone"],
-        email=data["email"]
+        email=data["email"],
+        data_nascimento=data["data_nascimento"]
     )
 
     db.session.add(cliente)
@@ -48,6 +59,7 @@ def atualizar_cliente(id, data):
     cliente.cpf = data.get("cpf", cliente.cpf)
     cliente.telefone = data.get("telefone", cliente.telefone)
     cliente.email = data.get("email", cliente.email)
+    cliente.data_nascimento = data.get("data_nascimento", cliente.data_nascimento)
 
     if "enderecos" in data:
         for e in data["enderecos"]:
@@ -66,25 +78,36 @@ def atualizar_cliente(id, data):
 def deletar_cliente(id):
     cliente = Cliente.query.get(id)
     if not cliente:
-        return None
+        return {"erro": "Cliente não encontrado."}
+    
+    contratos = Contrato.query.filter_by(cliente_id=id).all()
+    if contratos:
+        for contrato in contratos:
+            db.session.delete(contrato)
+        
+        db.session.commit()
     db.session.delete(cliente)
     db.session.commit()
-    return {"mensagem": "Cliente deletado com sucesso"}
+    return {"mensagem": "Cliente e seus contratos excluídos com sucesso."}
 
 
-def buscar_cliente_por_cpf(cpf):
-    cliente = Cliente.query.filter_by(cpf=cpf).first()
-    if not cliente:
-        return None
-    return cliente_to_dict(cliente)
-
-
-def buscar_clientes_por_nome(nome):
-    clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
-    if not clientes:
-        return []
+def buscar_clientes_por_cpf(cpf: str):
+    if not cpf:
+        raise ValueError("CPF não pode ser vazio.")
+    clientes = Cliente.query.filter(Cliente.cpf.like(f"{cpf}%")).all()
     return [cliente_to_dict(c) for c in clientes]
 
+def buscar_clientes_por_nome(nome: str):
+    if not nome:
+        raise ValueError("Nome não pode ser vazio.")
+    clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
+    return [cliente_to_dict(c) for c in clientes]
+
+def buscar_clientes_por_telefone(telefone):
+    cliente = Cliente.query.filter_by(telefone=telefone).first()
+    if not cliente:
+        return []
+    return [cliente_to_dict(cliente)]
 
 def excluir_todos_clientes():
     try:
@@ -95,6 +118,43 @@ def excluir_todos_clientes():
         db.session.rollback()
         return {"erro": str(e)}
 
+def login_cliente(data):
+    cpf = data.get("cpf")
+    data_nascimento = data.get("data_nascimento")
+    
+    if not cpf or not data_nascimento:
+        return {"erro": "CPF e data de nascimento são obrigatórios."}, 400
+    
+    cliente = Cliente.query.filter_by(cpf=cpf).first()
+    if not cliente:
+        return {"erro": "Cliente não encontrado."}, 404
+    
+    if cliente.data_nascimento.strftime('%Y-%m-%d') != data_nascimento:
+        return {"erro": "Data de nascimento inválida."}, 401
+    
+    access_token = create_access_token(
+        identity=str(cliente.id),
+        additional_claims={
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "tipo": "cliente",
+            "cargo": "cliente"
+        },
+        expires_delta=timedelta(days=30)
+    )
+    
+    return {
+        "mensagem": "Login realizado com sucesso.",
+        "token": access_token,
+        "cliente": {
+            "id": cliente.id,
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "email": cliente.email,
+            "telefone": cliente.telefone
+        }
+    }, 200
+
 
 def cliente_to_dict(cliente):
     return {
@@ -103,6 +163,7 @@ def cliente_to_dict(cliente):
         "cpf": cliente.cpf,
         "telefone": cliente.telefone,
         "email": cliente.email,
+        "data_nascimento": cliente.data_nascimento.strftime("%Y-%m-%d") if cliente.data_nascimento else None,
         "enderecos": [
             {
                 "id": e.id,
@@ -114,3 +175,92 @@ def cliente_to_dict(cliente):
             } for e in cliente.enderecos
         ]
     }
+
+
+def validar_telefone(telefone):
+    return bool(re.match(r'^\d{10,11}$', telefone))
+
+def importar_clientes_docx(caminho_arquivo, app):
+    with app.app_context():
+        doc = Document(caminho_arquivo)
+        clientes_importados = 0
+        clientes_atualizados = 0
+
+        for tabela in doc.tables:
+            for i, linha in enumerate(tabela.rows):
+                if i == 0:
+                    continue
+
+                cells = [c.text.strip() for c in linha.cells]
+
+                if len(cells) < 4:
+                    print(f"Linha {i+1} inválida (faltando colunas). Ignorada.")
+                    continue
+
+                nome = cells[0]
+                cpf = cells[1]
+                telefone = cells[2]
+                email = cells[3]
+                data_nascimento = datetime.strptime(cells[4], "%d/%m/%Y").date()
+                rua = cells[5] if len(cells) > 4 else ""
+                numero_end = cells[6].strip() if len(cells) > 5 else None
+                cidade = cells[7] if len(cells) > 6 else ""
+                estado = cells[8] if len(cells) > 7 else ""
+                cep = cells[9] if len(cells) > 8 else ""
+
+                if not nome or not cpf:
+                    print(f"Registro inválido na linha {i + 1}")
+                    continue
+
+                if not validar_telefone(telefone):
+                    print(f"Telefone inválido na linha {i + 1}. Ignorado.")
+                    continue
+
+                cliente = Cliente.query.filter_by(cpf=cpf).first()
+                if cliente is not None:
+                    cliente.nome = nome
+                    cliente.telefone = telefone
+                    cliente.email = email
+                    cliente.data_nascimento = data_nascimento
+
+                    if rua or numero_end or cidade or estado or cep:
+                        Endereco.query.filter_by(cliente_id=cliente.id).delete()
+                        endereco = Endereco(
+                            rua=rua,
+                            numero=int(numero_end) if numero_end and numero_end.isdigit() else None,
+                            cidade=cidade,
+                            estado=estado,
+                            cep=cep,
+                            cliente_id=cliente.id
+                        )
+                        db.session.add(endereco)
+
+                    clientes_atualizados += 1
+                    print(f"Cliente com CPF {cpf} atualizado.")
+                else:
+                    cliente = Cliente(
+                        nome=nome,
+                        cpf=cpf,
+                        telefone=telefone,
+                        email=email,
+                        data_nascimento=data_nascimento
+                    )
+                    db.session.add(cliente)
+                    db.session.flush()
+
+                    if rua or numero_end or cidade or estado or cep:
+                        endereco = Endereco(
+                            rua=rua,
+                            numero=int(numero_end) if numero_end and numero_end.isdigit() else None,
+                            cidade=cidade,
+                            estado=estado,
+                            cep=cep,
+                            cliente_id=cliente.id
+                        )
+                        db.session.add(endereco)
+
+                    clientes_importados += 1
+                    print(f"Cliente com CPF {cpf} adicionado.")
+
+        db.session.commit()
+        print(f"Importação concluída: {clientes_importados} clientes adicionados, {clientes_atualizados} clientes atualizados.")

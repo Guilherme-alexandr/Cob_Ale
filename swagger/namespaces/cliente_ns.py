@@ -1,6 +1,7 @@
 from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from app.controllers import cliente_controller
+from app.models.cliente import Cliente
 
 cliente_ns = Namespace("clientes", description="Operações com clientes")
 
@@ -19,6 +20,7 @@ cliente_model = cliente_ns.model("Cliente", {
     "cpf": fields.String(required=True, description="CPF do cliente", default="12345678901"),
     "telefone": fields.String(required=True, description="Número de telefone do cliente", default="11999998888"),
     "email": fields.String(required=True, description="Email do cliente", default="joao.silva@email.com"),
+    "data_nascimento": fields.Date(required=True, description="Data de nascimento do cliente"),
     "enderecos": fields.List(fields.Nested(endereco_model), description="Lista de endereços do cliente")
 })
 
@@ -75,25 +77,44 @@ class ClientePorCPF(Resource):
     @cliente_ns.marshal_with(cliente_model)
     def get(self, cpf):
         """Buscar cliente pelo CPF"""
-        cliente = cliente_controller.buscar_cliente_por_cpf(cpf)
-        if not cliente:
+        clientes = cliente_controller.buscar_clientes_por_cpf(cpf)
+        if not clientes:
             cliente_ns.abort(404, "Cliente não encontrado")
-        return cliente
+        return clientes
 
 
 @cliente_ns.route("/buscar_por_nome/<string:nome>")
 @cliente_ns.param("nome", "Nome do cliente")
 class ClientePorNome(Resource):
-    @cliente_ns.marshal_with(cliente_model)
     def get(self, nome):
-        """Buscar cliente pelo Nome"""
-        cliente = cliente_controller.buscar_clientes_por_nome(nome)
-        if not cliente:
-            return jsonify({"error": "Nenhum cliente encontrado"}), 404
-        return jsonify([{
-            "id": c.id,
-            "nome": c.nome,
-            "cpf": c.cpf,
-            "telefone": c.telefone,
-            "email": c.email
-        } for c in cliente])
+        """Buscar clientes pelo nome (parcial, sem erro de atributo)"""
+        try:
+            clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
+
+            if not clientes:
+                return jsonify({"error": "Nenhum cliente encontrado"}), 404
+
+            resultado = []
+            for c in clientes:
+                resultado.append({
+                    "id": c.id,
+                    "nome": c.nome,
+                    "cpf": c.cpf,
+                    "telefone": c.telefone,
+                    "email": c.email,
+                    "data_nascimento": c.data_nascimento.strftime("%Y-%m-%d"),
+                    "enderecos": [{
+                        "id": e.id,
+                        "rua": e.rua,
+                        "numero": e.numero,
+                        "cidade": e.cidade,
+                        "estado": e.estado,
+                        "cep": e.cep
+                    } for e in c.enderecos]
+                })
+
+            return jsonify(resultado)
+
+        except Exception as e:
+            print(f"❌ Erro em buscar_por_nome: {e}")
+            return {"erro": str(e)}, 500

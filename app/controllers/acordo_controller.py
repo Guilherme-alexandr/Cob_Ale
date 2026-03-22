@@ -4,6 +4,7 @@ from app.database import db
 from app.models.cliente import Cliente
 from app.models.acordo import Acordo, Boleto
 from app.models.contrato import Contrato
+from app.controllers import contrato_controller
 from importadores import boletos
 from calculadora import calcular
 from reportlab.graphics import renderPM
@@ -90,6 +91,50 @@ def obter_acordo(id):
 def obter_acordo_por_contrato(numero_contrato):
     return Acordo.query.filter_by(contrato_id=numero_contrato).first()
 
+def cliente_por_acordo(status: str):
+    """
+    Retorna clientes com ou sem acordo, conforme o status informado.
+    status pode ser: 'em andamento', 'concluido', 'cancelado' ou 'sem_acordo'
+    """
+    clientes = []
+
+    if status == "sem_acordo":
+        # Busca clientes que NÃO possuem nenhum acordo
+        subquery = db.session.query(Acordo.contrato_id).distinct()
+        contratos_sem_acordo = Contrato.query.filter(~Contrato.numero_contrato.in_(subquery)).all()
+
+        for contrato in contratos_sem_acordo:
+            cliente = Cliente.query.get(contrato.cliente_id)
+            if cliente:
+                clientes.append({
+                    "cliente_id": cliente.id,
+                    "cliente_nome": cliente.nome,
+                    "contrato_numero": contrato.numero_contrato,
+                    "status_acordo": "Sem acordo"
+                })
+
+    elif status in ["em andamento", "concluido", "cancelado"]:
+        # Busca clientes que possuem acordo com o status informado
+        acordos = Acordo.query.filter_by(status=status).all()
+
+        for acordo in acordos:
+            contrato = Contrato.query.filter_by(numero_contrato=acordo.contrato_id).first()
+            if contrato:
+                cliente = Cliente.query.get(contrato.cliente_id)
+                if cliente:
+                    clientes.append({
+                        "acordo_id": acordo.id,
+                        "cliente_id": cliente.id,
+                        "cliente_nome": cliente.nome,
+                        "contrato_numero": contrato.numero_contrato,
+                        "status_acordo": acordo.status
+                    })
+    else:
+        raise ValueError("Status inválido. Use 'em andamento', 'concluido', 'cancelado' ou 'sem_acordo'.")
+
+    return clientes
+
+
 
 def atualizar_acordo(id, data):
     acordo = Acordo.query.get(id)
@@ -113,6 +158,28 @@ def atualizar_acordo(id, data):
 
     db.session.commit()
     return acordo
+
+
+def buscar_acordos_por_cliente(cliente_id):
+    """
+    Busca todos os acordos relacionados a um cliente.
+    Fluxo:
+    1. Busca todos os contratos do cliente
+    2. Para cada contrato, busca o acordo correspondente
+    3. Retorna lista de acordos
+    """    
+    contratos = contrato_controller.buscar_contratos_por_cliente(cliente_id)
+    
+    if not contratos:
+        return []
+    
+    acordos = []
+    for contrato in contratos:
+        acordo = obter_acordo_por_contrato(contrato.numero_contrato)
+        if acordo:
+            acordos.append(acordo.to_dict())
+    
+    return acordos
 
 def deletar_acordo(id):
     acordo = Acordo.query.get(id)
@@ -209,9 +276,70 @@ def gerar_boleto(acordo_id):
     acordo = Acordo.query.get_or_404(acordo_id)
     boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
 
-    pasta = _pasta_boletos()
-    if not os.path.exists(pasta):
-        os.makedirs(pasta)
+        pasta = _pasta_boletos()
+        if not os.path.exists(pasta):
+            os.makedirs(pasta)
+
+        nome_arquivo = f"boleto_{acordo.id}.pdf"
+        caminho_pdf = os.path.join(pasta, nome_arquivo)
+
+        if boleto and os.path.exists(caminho_pdf):
+            current_app.logger.info(f"📄 Boleto já existente encontrado: {caminho_pdf}")
+            with open(caminho_pdf, "rb") as f:
+                pdf_bytes = f.read()
+            return pdf_bytes, nome_arquivo, boleto.id
+        
+        current_app.logger.info(f"[DEBUG] Iniciando geração de boleto para acordo_id={acordo_id}")
+
+        base_dir = os.path.dirname(__file__)
+        template_path = os.path.join(base_dir, r"C:\Users\guilh\Desktop\Meus projetos\Cob_Ale\importadores\Boleto CobAle.docx")
+        current_app.logger.info(f"🗂️ Template path usado: {template_path}")
+        doc = DocxTemplate(template_path)
+
+        caminho_img_sem_ext = info["caminho_img"].replace(".png", "")
+        ean = barcode.get("code128", info["codigo_barras"], writer=ImageWriter())
+        ean.save(caminho_img_sem_ext)
+        caminho_img_final = caminho_img_sem_ext + ".png"
+        info["caminho_img"] = caminho_img_final
+
+        if not os.path.exists(caminho_img_final):
+            raise FileNotFoundError(f"Código de barras não foi gerado: {caminho_img_final}")
+
+        info_boleto_docx = info.copy()
+        info_boleto_docx["codigo_barras_img"] = InlineImage(doc, caminho_img_final, width=Mm(80))
+
+        current_app.logger.info("📝 Renderizando DOCX...")
+        doc.render(info_boleto_docx)
+
+        temp_docx = os.path.join(base_dir, f"temp_boleto_{acordo.id}.docx")
+        doc.save(temp_docx)
+
+        try:
+            pythoncom.CoInitialize()
+            convert(temp_docx, caminho_pdf)
+            current_app.logger.info(f"✅ PDF convertido com sucesso: {caminho_pdf}")
+        except Exception as e:
+            current_app.logger.error(f"❌ Erro ao converter DOCX para PDF: {e}", exc_info=True)
+            raise
+        finally:
+            pythoncom.CoUninitialize()
+
+        if os.path.exists(temp_docx):
+            os.remove(temp_docx)
+        if os.path.exists(caminho_img_final):
+            os.remove(caminho_img_final)
+
+        if not boleto:
+            boleto = Boleto(
+                acordo_id=acordo.id,
+                nome_arquivo=nome_arquivo,
+                criado_em=datetime.utcnow(),
+                enviado=False
+            )
+            db.session.add(boleto)
+        else:
+            boleto.nome_arquivo = nome_arquivo
+            boleto.criado_em = datetime.utcnow()
 
     nome_arquivo = f"boleto_{acordo.id}.pdf"
     caminho_pdf = os.path.join(pasta, nome_arquivo)

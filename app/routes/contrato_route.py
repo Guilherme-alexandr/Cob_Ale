@@ -78,7 +78,63 @@ def buscar_por_cliente(cliente_id):
         "filial": c.filial
     } for c in contratos])
 
-@contrato_bp.route("resetar", methods=["POST"])
+@contrato_bp.route("/buscar_por_filial/<string:filial>", methods=["GET"])
+def buscar_por_filial(filial):
+    try:
+        contratos = contrato_controller.buscar_contratos_por_filial(filial)
+        if not contratos:
+            return jsonify({"error": "Nenhum contrato encontrado para esta filial"}), 404
+
+        return jsonify([
+            {
+                "numero_contrato": c.numero_contrato,
+                "cliente_id": c.cliente_id,
+                "vencimento": c.vencimento.strftime("%Y-%m-%d"),
+                "valor_total": c.valor_total,
+                "filial": c.filial
+            } for c in contratos
+        ])
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except Exception as e:
+        print("Erro ao buscar contratos por filial:", e)
+        return jsonify({"erro": "Erro interno no servidor"}), 500
+    
+@contrato_bp.route("/buscar_por_valor", methods=["GET"])
+def buscar_por_valor():
+    try:
+        valor_minimo = request.args.get("min")
+        valor_maximo = request.args.get("max")
+
+        contratos = contrato_controller.buscar_contratos_por_valor(valor_minimo, valor_maximo)
+        if not contratos:
+            return jsonify({"error": "Nenhum contrato encontrado dentro do intervalo especificado"}), 404
+
+        return jsonify(contratos)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except Exception as e:
+        print("Erro ao buscar contratos por valor:", e)
+        return jsonify({"erro": "Erro interno no servidor"}), 500
+
+
+@contrato_bp.route('/buscar_por_vencimento', methods=['GET'])
+def contratos_por_vencimento_route():
+    data_inicio = request.args.get('inicio')
+    data_fim = request.args.get('fim')
+
+    try:
+        contratos = contrato_controller.buscar_contratos_por_vencimento(data_inicio, data_fim)
+        return jsonify(contratos), 200
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    except Exception as e:
+        print("Erro:", e)
+        return jsonify({"erro": "Erro interno no servidor"}), 500
+
+    
+
+@contrato_bp.route("/resetar", methods=["POST"])
 def resetar():
     try:
         contrato_controller.resetar_contratos()

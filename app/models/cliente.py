@@ -6,6 +6,7 @@ class Cliente(db.Model):
     cpf = db.Column(db.String(11), unique=True, nullable=False)
     telefone = db.Column(db.String(15), nullable=False)
     email = db.Column(db.String(120), nullable=False)
+    data_nascimento = db.Column(db.Date, nullable=False)
 
     enderecos = db.relationship("Endereco",  backref="cliente", cascade="all, delete-orphan", lazy=True)
 
