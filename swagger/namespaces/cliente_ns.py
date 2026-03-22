@@ -20,6 +20,7 @@ cliente_model = cliente_ns.model("Cliente", {
     "cpf": fields.String(required=True, description="CPF do cliente", default="12345678901"),
     "telefone": fields.String(required=True, description="Número de telefone do cliente", default="11999998888"),
     "email": fields.String(required=True, description="Email do cliente", default="joao.silva@email.com"),
+    "data_nascimento": fields.Date(required=True, description="Data de nascimento do cliente"),
     "enderecos": fields.List(fields.Nested(endereco_model), description="Lista de endereços do cliente")
 })
 
@@ -101,6 +102,7 @@ class ClientePorNome(Resource):
                     "cpf": c.cpf,
                     "telefone": c.telefone,
                     "email": c.email,
+                    "data_nascimento": c.data_nascimento.strftime("%Y-%m-%d"),
                     "enderecos": [{
                         "id": e.id,
                         "rua": e.rua,

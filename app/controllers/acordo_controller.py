@@ -4,6 +4,7 @@ from app.database import db
 from app.models.cliente import Cliente
 from app.models.acordo import Acordo, Boleto
 from app.models.contrato import Contrato
+from app.controllers import contrato_controller
 from importadores import boletos
 from calculadora import calcular
 import json, os, barcode
@@ -157,6 +158,28 @@ def atualizar_acordo(id, data):
 
     db.session.commit()
     return acordo
+
+
+def buscar_acordos_por_cliente(cliente_id):
+    """
+    Busca todos os acordos relacionados a um cliente.
+    Fluxo:
+    1. Busca todos os contratos do cliente
+    2. Para cada contrato, busca o acordo correspondente
+    3. Retorna lista de acordos
+    """    
+    contratos = contrato_controller.buscar_contratos_por_cliente(cliente_id)
+    
+    if not contratos:
+        return []
+    
+    acordos = []
+    for contrato in contratos:
+        acordo = obter_acordo_por_contrato(contrato.numero_contrato)
+        if acordo:
+            acordos.append(acordo.to_dict())
+    
+    return acordos
 
 def deletar_acordo(id):
     acordo = Acordo.query.get(id)

@@ -16,3 +16,16 @@ def role_required(*roles):
             return func(*args, **kwargs)
         return wrapper
     return decorator
+
+def cliente_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            verify_jwt_in_request()
+            usuario = get_jwt_identity()
+            if usuario.get('tipo') != 'cliente':
+                return jsonify({"mensagem": "Acesso negado: apenas clientes."}), 403
+        except Exception:
+            return jsonify({"mensagem": "Acesso negado: token inválido ou não fornecido."}), 401
+        return func(*args, **kwargs)
+    return wrapper

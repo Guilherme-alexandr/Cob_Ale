@@ -2,9 +2,13 @@ from flask import jsonify
 from app.database import db
 from app.models.cliente import Cliente, Endereco
 from app.models.contrato import Contrato
+from datetime import datetime
+from flask_jwt_extended import create_access_token
+from datetime import timedelta
 import os
 from docx import Document
 import re
+
 
 
 def criar_cliente(data):
@@ -12,7 +16,8 @@ def criar_cliente(data):
         nome=data["nome"],
         cpf=data["cpf"],
         telefone=data["telefone"],
-        email=data["email"]
+        email=data["email"],
+        data_nascimento=data["data_nascimento"]
     )
 
     db.session.add(cliente)
@@ -54,6 +59,7 @@ def atualizar_cliente(id, data):
     cliente.cpf = data.get("cpf", cliente.cpf)
     cliente.telefone = data.get("telefone", cliente.telefone)
     cliente.email = data.get("email", cliente.email)
+    cliente.data_nascimento = data.get("data_nascimento", cliente.data_nascimento)
 
     if "enderecos" in data:
         for e in data["enderecos"]:
@@ -112,6 +118,43 @@ def excluir_todos_clientes():
         db.session.rollback()
         return {"erro": str(e)}
 
+def login_cliente(data):
+    cpf = data.get("cpf")
+    data_nascimento = data.get("data_nascimento")
+    
+    if not cpf or not data_nascimento:
+        return {"erro": "CPF e data de nascimento são obrigatórios."}, 400
+    
+    cliente = Cliente.query.filter_by(cpf=cpf).first()
+    if not cliente:
+        return {"erro": "Cliente não encontrado."}, 404
+    
+    if cliente.data_nascimento.strftime('%Y-%m-%d') != data_nascimento:
+        return {"erro": "Data de nascimento inválida."}, 401
+    
+    access_token = create_access_token(
+        identity=str(cliente.id),
+        additional_claims={
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "tipo": "cliente",
+            "cargo": "cliente"
+        },
+        expires_delta=timedelta(days=30)
+    )
+    
+    return {
+        "mensagem": "Login realizado com sucesso.",
+        "token": access_token,
+        "cliente": {
+            "id": cliente.id,
+            "nome": cliente.nome,
+            "cpf": cliente.cpf,
+            "email": cliente.email,
+            "telefone": cliente.telefone
+        }
+    }, 200
+
 
 def cliente_to_dict(cliente):
     return {
@@ -120,6 +163,7 @@ def cliente_to_dict(cliente):
         "cpf": cliente.cpf,
         "telefone": cliente.telefone,
         "email": cliente.email,
+        "data_nascimento": cliente.data_nascimento.strftime("%Y-%m-%d") if cliente.data_nascimento else None,
         "enderecos": [
             {
                 "id": e.id,
@@ -157,11 +201,12 @@ def importar_clientes_docx(caminho_arquivo, app):
                 cpf = cells[1]
                 telefone = cells[2]
                 email = cells[3]
-                rua = cells[4] if len(cells) > 4 else ""
-                numero_end = cells[5].strip() if len(cells) > 5 else None
-                cidade = cells[6] if len(cells) > 6 else ""
-                estado = cells[7] if len(cells) > 7 else ""
-                cep = cells[8] if len(cells) > 8 else ""
+                data_nascimento = datetime.strptime(cells[4], "%d/%m/%Y").date()
+                rua = cells[5] if len(cells) > 4 else ""
+                numero_end = cells[6].strip() if len(cells) > 5 else None
+                cidade = cells[7] if len(cells) > 6 else ""
+                estado = cells[8] if len(cells) > 7 else ""
+                cep = cells[9] if len(cells) > 8 else ""
 
                 if not nome or not cpf:
                     print(f"Registro inválido na linha {i + 1}")
@@ -176,6 +221,7 @@ def importar_clientes_docx(caminho_arquivo, app):
                     cliente.nome = nome
                     cliente.telefone = telefone
                     cliente.email = email
+                    cliente.data_nascimento = data_nascimento
 
                     if rua or numero_end or cidade or estado or cep:
                         Endereco.query.filter_by(cliente_id=cliente.id).delete()
@@ -196,7 +242,8 @@ def importar_clientes_docx(caminho_arquivo, app):
                         nome=nome,
                         cpf=cpf,
                         telefone=telefone,
-                        email=email
+                        email=email,
+                        data_nascimento=data_nascimento
                     )
                     db.session.add(cliente)
                     db.session.flush()

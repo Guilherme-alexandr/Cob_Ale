@@ -61,6 +61,14 @@ def buscar_por_telefone(telefone):
     except Exception as e:
         print("Erro ao buscar cliente por telefone:", e)
         return jsonify({"erro": "Erro interno no servidor"}), 500
+    
+
+@cliente_bp.route('/login', methods=['POST'])
+def login_cliente():
+    data = request.get_json()
+    response, status = cliente_controller.login_cliente(data)
+    return jsonify(response), status
+    
 
 
 @cliente_bp.route("/todos", methods=["DELETE"])

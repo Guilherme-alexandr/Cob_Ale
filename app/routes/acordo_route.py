@@ -65,6 +65,31 @@ def clientes_por_acordo_route(status):
         print("Erro:", e)
         return jsonify({"erro": "Erro interno no servidor"}), 500
 
+@acordo_bp.route('/buscar_por_cliente/<int:cliente_id>', methods=['GET'])
+def buscar_acordos_por_cliente_route(cliente_id):
+    """
+    Endpoint: GET /acordo/buscar_por_cliente/<cliente_id>
+    Retorna todos os acordos relacionados a um cliente
+    """
+    try:
+        acordos = acordo_controller.buscar_acordos_por_cliente(cliente_id)
+        
+        if not acordos:
+            return jsonify({
+                "mensagem": "Nenhum acordo encontrado para este cliente",
+                "acordos": []
+            }), 200
+        
+        return jsonify({
+            "mensagem": "Acordos encontrados com sucesso",
+            "acordos": acordos
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "erro": f"Erro ao buscar acordos: {str(e)}"
+        }), 500
+
 
 
 @acordo_bp.route("/<int:id>", methods=["PUT"])
