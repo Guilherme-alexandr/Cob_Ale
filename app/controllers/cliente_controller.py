@@ -2,28 +2,25 @@ from flask import jsonify
 from app.database import db
 from app.models.cliente import Cliente, Endereco
 from app.models.contrato import Contrato
-from datetime import datetime
-from flask_jwt_extended import create_access_token
-from datetime import timedelta
+from datetime import datetime, timedelta
 import os
-from docx import Document
 import re
-
-
+from docx import Document
+from flask_jwt_extended import create_access_token
 
 def criar_cliente(data):
+    dt_nasc = datetime.strptime(data["data_nascimento"], "%Y-%m-%d").date() if data.get("data_nascimento") else None
+
     cliente = Cliente(
         nome=data["nome"],
         cpf=data["cpf"],
         telefone=data["telefone"],
         email=data["email"],
-        data_nascimento=data["data_nascimento"]
+        data_nascimento=dt_nasc
     )
-
     db.session.add(cliente)
-
-    enderecos = data.get("enderecos", [])
-    for e in enderecos:
+    
+    for e in data.get("enderecos", []):
         endereco = Endereco(
             rua=e["rua"],
             numero=e["numero"],
@@ -35,146 +32,81 @@ def criar_cliente(data):
         db.session.add(endereco)
     
     db.session.commit()
-    return cliente_to_dict(cliente)
-
+    return cliente.to_dict()
 
 def listar_clientes():
     clientes = Cliente.query.all()
-    return [cliente_to_dict(c) for c in clientes]
-
+    return [c.to_dict() for c in clientes]
 
 def obter_cliente(id):
     cliente = Cliente.query.get(id)
-    if not cliente:
-        return None
-    return cliente_to_dict(cliente)
-
+    return cliente.to_dict() if cliente else None
 
 def atualizar_cliente(id, data):
     cliente = Cliente.query.get(id)
     if not cliente:
         return None
 
+    # Atualização básica
     cliente.nome = data.get("nome", cliente.nome)
     cliente.cpf = data.get("cpf", cliente.cpf)
     cliente.telefone = data.get("telefone", cliente.telefone)
     cliente.email = data.get("email", cliente.email)
-    cliente.data_nascimento = data.get("data_nascimento", cliente.data_nascimento)
+    
+    if "data_nascimento" in data:
+        cliente.data_nascimento = datetime.strptime(data["data_nascimento"], "%Y-%m-%d").date()
 
     if "enderecos" in data:
         for e in data["enderecos"]:
-            endereco = Endereco.query.filter_by(id=e.get("id"), cliente_id=cliente.id).first()
-            if endereco:
-                endereco.rua = e.get("rua", endereco.rua)
-                endereco.numero = e.get("numero", endereco.numero)
-                endereco.cidade = e.get("cidade", endereco.cidade)
-                endereco.estado = e.get("estado", endereco.estado)
-                endereco.cep = e.get("cep", endereco.cep)
+            end_obj = Endereco.query.filter_by(id=e.get("id"), cliente_id=cliente.id).first()
+            if end_obj:
+                end_obj.rua = e.get("rua", end_obj.rua)
+                end_obj.numero = e.get("numero", end_obj.numero)
+                end_obj.cidade = e.get("cidade", end_obj.cidade)
+                end_obj.estado = e.get("estado", end_obj.estado)
+                end_obj.cep = e.get("cep", end_obj.cep)
 
     db.session.commit()
-    return cliente_to_dict(cliente)
-
+    return cliente.to_dict()
 
 def deletar_cliente(id):
     cliente = Cliente.query.get(id)
     if not cliente:
         return {"erro": "Cliente não encontrado."}
     
-    contratos = Contrato.query.filter_by(cliente_id=id).all()
-    if contratos:
-        for contrato in contratos:
-            db.session.delete(contrato)
-        
-        db.session.commit()
+    Contrato.query.filter_by(cliente_id=id).delete()
+    
     db.session.delete(cliente)
     db.session.commit()
-    return {"mensagem": "Cliente e seus contratos excluídos com sucesso."}
-
+    return {"mensagem": "Cliente e dependências excluídos com sucesso."}
 
 def buscar_clientes_por_cpf(cpf: str):
-    if not cpf:
-        raise ValueError("CPF não pode ser vazio.")
     clientes = Cliente.query.filter(Cliente.cpf.like(f"{cpf}%")).all()
-    return [cliente_to_dict(c) for c in clientes]
+    return [c.to_dict() for c in clientes]
 
 def buscar_clientes_por_nome(nome: str):
-    if not nome:
-        raise ValueError("Nome não pode ser vazio.")
     clientes = Cliente.query.filter(Cliente.nome.ilike(f"%{nome}%")).all()
-    return [cliente_to_dict(c) for c in clientes]
-
-def buscar_clientes_por_telefone(telefone):
-    cliente = Cliente.query.filter_by(telefone=telefone).first()
-    if not cliente:
-        return []
-    return [cliente_to_dict(cliente)]
-
-def excluir_todos_clientes():
-    try:
-        num_rows = Cliente.query.delete()
-        db.session.commit()
-        return {"mensagem": f"{num_rows} clientes foram excluídos com sucesso."}
-    except Exception as e:
-        db.session.rollback()
-        return {"erro": str(e)}
+    return [c.to_dict() for c in clientes]
 
 def login_cliente(data):
     cpf = data.get("cpf")
-    data_nascimento = data.get("data_nascimento")
-    
-    if not cpf or not data_nascimento:
-        return {"erro": "CPF e data de nascimento são obrigatórios."}, 400
+    data_nasc_str = data.get("data_nascimento")
     
     cliente = Cliente.query.filter_by(cpf=cpf).first()
-    if not cliente:
-        return {"erro": "Cliente não encontrado."}, 404
-    
-    if cliente.data_nascimento.strftime('%Y-%m-%d') != data_nascimento:
-        return {"erro": "Data de nascimento inválida."}, 401
+    if not cliente or cliente.data_nascimento.strftime('%Y-%m-%d') != data_nasc_str:
+        return {"erro": "Credenciais inválidas."}, 401
     
     access_token = create_access_token(
         identity=str(cliente.id),
-        additional_claims={
-            "nome": cliente.nome,
-            "cpf": cliente.cpf,
-            "tipo": "cliente",
-            "cargo": "cliente"
-        },
+        additional_claims={"nome": cliente.nome, "tipo": "cliente"},
         expires_delta=timedelta(days=30)
     )
     
     return {
         "mensagem": "Login realizado com sucesso.",
         "token": access_token,
-        "cliente": {
-            "id": cliente.id,
-            "nome": cliente.nome,
-            "cpf": cliente.cpf,
-            "email": cliente.email,
-            "telefone": cliente.telefone
-        }
+        "cliente": cliente.to_dict()
     }, 200
-
-
-def cliente_to_dict(cliente):
-    return {
-        "id": cliente.id,
-        "nome": cliente.nome,
-        "cpf": cliente.cpf,
-        "telefone": cliente.telefone,
-        "email": cliente.email,
-        "data_nascimento": cliente.data_nascimento.strftime("%Y-%m-%d") if cliente.data_nascimento else None,
-        "enderecos": [
-            {
-                "id": e.id,
-                "rua": e.rua,
-                "numero": e.numero,
-                "cidade": e.cidade,
-                "estado": e.estado,
-                "cep": e.cep
-            } for e in cliente.enderecos
-        ]
-    }
 
 
 def validar_telefone(telefone):
