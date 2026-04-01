@@ -275,8 +275,8 @@ def info_boleto(acordo_id):
 def gerar_boleto(acordo_id):
     acordo = Acordo.query.get_or_404(acordo_id)
     boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
-
-        pasta = _pasta_boletos()
+    
+    pasta = _pasta_boletos()
         if not os.path.exists(pasta):
             os.makedirs(pasta)
 
