@@ -91,6 +91,7 @@ def obter_acordo(id):
 def obter_acordo_por_contrato(numero_contrato):
     return Acordo.query.filter_by(contrato_id=numero_contrato).first()
 
+
 def cliente_por_acordo(status: str):
     """
     Retorna clientes com ou sem acordo, conforme o status informado.
@@ -135,7 +136,6 @@ def cliente_por_acordo(status: str):
     return clientes
 
 
-
 def atualizar_acordo(id, data):
     acordo = Acordo.query.get(id)
     if not acordo:
@@ -163,11 +163,7 @@ def atualizar_acordo(id, data):
 def buscar_acordos_por_cliente(cliente_id):
     """
     Busca todos os acordos relacionados a um cliente.
-    Fluxo:
-    1. Busca todos os contratos do cliente
-    2. Para cada contrato, busca o acordo correspondente
-    3. Retorna lista de acordos
-    """    
+    """
     contratos = contrato_controller.buscar_contratos_por_cliente(cliente_id)
     
     if not contratos:
@@ -180,6 +176,7 @@ def buscar_acordos_por_cliente(cliente_id):
             acordos.append(acordo.to_dict())
     
     return acordos
+
 
 def deletar_acordo(id):
     acordo = Acordo.query.get(id)
@@ -277,82 +274,28 @@ def gerar_boleto(acordo_id):
     boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
     
     pasta = _pasta_boletos()
-        if not os.path.exists(pasta):
-            os.makedirs(pasta)
-
-        nome_arquivo = f"boleto_{acordo.id}.pdf"
-        caminho_pdf = os.path.join(pasta, nome_arquivo)
-
-        if boleto and os.path.exists(caminho_pdf):
-            current_app.logger.info(f"📄 Boleto já existente encontrado: {caminho_pdf}")
-            with open(caminho_pdf, "rb") as f:
-                pdf_bytes = f.read()
-            return pdf_bytes, nome_arquivo, boleto.id
-        
-        current_app.logger.info(f"[DEBUG] Iniciando geração de boleto para acordo_id={acordo_id}")
-
-        base_dir = os.path.dirname(__file__)
-        template_path = os.path.join(base_dir, r"C:\Users\guilh\Desktop\Meus projetos\Cob_Ale\importadores\Boleto CobAle.docx")
-        current_app.logger.info(f"🗂️ Template path usado: {template_path}")
-        doc = DocxTemplate(template_path)
-
-        caminho_img_sem_ext = info["caminho_img"].replace(".png", "")
-        ean = barcode.get("code128", info["codigo_barras"], writer=ImageWriter())
-        ean.save(caminho_img_sem_ext)
-        caminho_img_final = caminho_img_sem_ext + ".png"
-        info["caminho_img"] = caminho_img_final
-
-        if not os.path.exists(caminho_img_final):
-            raise FileNotFoundError(f"Código de barras não foi gerado: {caminho_img_final}")
-
-        info_boleto_docx = info.copy()
-        info_boleto_docx["codigo_barras_img"] = InlineImage(doc, caminho_img_final, width=Mm(80))
-
-        current_app.logger.info("📝 Renderizando DOCX...")
-        doc.render(info_boleto_docx)
-
-        temp_docx = os.path.join(base_dir, f"temp_boleto_{acordo.id}.docx")
-        doc.save(temp_docx)
-
-        try:
-            pythoncom.CoInitialize()
-            convert(temp_docx, caminho_pdf)
-            current_app.logger.info(f"✅ PDF convertido com sucesso: {caminho_pdf}")
-        except Exception as e:
-            current_app.logger.error(f"❌ Erro ao converter DOCX para PDF: {e}", exc_info=True)
-            raise
-        finally:
-            pythoncom.CoUninitialize()
-
-        if os.path.exists(temp_docx):
-            os.remove(temp_docx)
-        if os.path.exists(caminho_img_final):
-            os.remove(caminho_img_final)
-
-        if not boleto:
-            boleto = Boleto(
-                acordo_id=acordo.id,
-                nome_arquivo=nome_arquivo,
-                criado_em=datetime.utcnow(),
-                enviado=False
-            )
-            db.session.add(boleto)
-        else:
-            boleto.nome_arquivo = nome_arquivo
-            boleto.criado_em = datetime.utcnow()
+    if not os.path.exists(pasta):
+        os.makedirs(pasta)
 
     nome_arquivo = f"boleto_{acordo.id}.pdf"
     caminho_pdf = os.path.join(pasta, nome_arquivo)
 
+    # 1. Verifica se já existe um PDF pronto
     if boleto and os.path.exists(caminho_pdf):
+        current_app.logger.info(f"📄 Boleto já existente encontrado: {caminho_pdf}")
         with open(caminho_pdf, "rb") as f:
-            return f.read(), boleto.nome_arquivo
+            pdf_bytes = f.read()
+        return pdf_bytes, nome_arquivo
 
+    current_app.logger.info(f"[DEBUG] Iniciando geração de boleto via Weasyprint para acordo_id={acordo_id}")
+
+    # 2. Busca informações do boleto
     boleto_info, status = info_boleto(acordo_id)
     if status != 200:
         raise ValueError("Erro ao gerar informações do boleto.")
 
-    codigo_barras, linha_digitavel = gerar_linha_digitavel(acordo)
+    # 3. Gera código de barras
+    codigo_barras, linha_digitavel = gerar_linha_digitavel(acordo.id)
     boleto_info["linha_digitavel"] = linha_digitavel
     boleto_info["codigo_barras"] = codigo_barras
 
@@ -365,10 +308,14 @@ def gerar_boleto(acordo_id):
     barcode_obj.write(buf_bar)
     barcode_b64 = base64.b64encode(buf_bar.getvalue()).decode("utf-8")
 
+    # 4. Pega a logo (Evita falha se o arquivo não existir)
     logo_path = os.path.join(current_app.root_path, "..", "importadores", "img", "logo_CobAle.png")
-    with open(logo_path, "rb") as f:
-        logo_b64 = base64.b64encode(f.read()).decode("utf-8")
+    logo_b64 = ""
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            logo_b64 = base64.b64encode(f.read()).decode("utf-8")
 
+    # 5. Gera HTML e PDF
     html = render_template("boleto.html", boleto=boleto_info, barcode_img=barcode_b64, logo_b64=logo_b64)
     pdf = HTML(string=html).write_pdf()
 
@@ -378,6 +325,7 @@ def gerar_boleto(acordo_id):
     with open(caminho_pdf, "wb") as f:
         f.write(pdf)
 
+    # 6. Salva no Banco de Dados
     if not boleto:
         boleto = Boleto(
             acordo_id=acordo.id,
@@ -439,8 +387,6 @@ def enviar_boleto(acordo_id):
     }
 
 
-
-
 def listar_boletos_por_pasta(acordo_id):
     pasta = _pasta_boletos()
     arquivos = [f for f in os.listdir(pasta) if f.startswith(f"boleto_{acordo_id}") and f.endswith(".pdf")]
@@ -495,8 +441,8 @@ def gerar_linha_digitavel(acordo_id, banco="237", carteira="09", agencia="1234",
     current_app.logger.info(f"Código de Barras: {codigo_barras} | Linha Digitável: {linha_digitavel}")
     return codigo_barras, linha_digitavel
 
-def calcular_dv(codigo):
 
+def calcular_dv(codigo):
     pesos = [2,3,4,5,6,7,8,9]
     soma = 0
     for i, n in enumerate(reversed(codigo)):
