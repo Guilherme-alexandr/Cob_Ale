@@ -6,8 +6,20 @@ class Cliente(db.Model):
     cpf = db.Column(db.String(11), unique=True, nullable=False)
     telefone = db.Column(db.String(15), nullable=False)
     email = db.Column(db.String(120), nullable=False)
+    data_nascimento = db.Column(db.Date, nullable=False)
 
-    enderecos = db.relationship("Endereco",  backref="cliente", cascade="all, delete-orphan", lazy=True)
+    enderecos = db.relationship("Endereco", backref="cliente", cascade="all, delete-orphan", lazy=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "cpf": self.cpf,
+            "telefone": self.telefone,
+            "email": self.email,
+            "data_nascimento": self.data_nascimento.strftime("%Y-%m-%d") if self.data_nascimento else None,
+            "enderecos": [endereco.to_dict() for endereco in self.enderecos]
+        }
 
 class Endereco(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -18,3 +30,13 @@ class Endereco(db.Model):
     cep =  db.Column(db.String(8), nullable=False)
 
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "rua": self.rua,
+            "numero": self.numero,
+            "cidade": self.cidade,
+            "estado": self.estado,
+            "cep": self.cep
+        }

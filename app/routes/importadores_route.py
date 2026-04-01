@@ -1,7 +1,8 @@
 import os
 from flask import Blueprint, jsonify, current_app
-from importadores.importar_clientes import importar_clientes_docx
-from importadores.importar_contratos import importar_contratos_docx
+from ..controllers.cliente_controller import importar_clientes_docx
+from ..controllers.contrato_controller import importar_contratos_docx
+from ..controllers.usuario_controller import importar_usuarios_docx
 
 import_bp = Blueprint("import_bp", __name__)
 
@@ -17,13 +18,15 @@ def importar_exemplos():
     root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     clientes_path = os.path.join(root_dir, "importadores/clientes_exemplo.docx")
     contratos_path = os.path.join(root_dir, "importadores/contratos_exemplo.docx")
+    usuarios_path = os.path.join(root_dir, "importadores/usuarios_exemplo.docx")
 
-    if not os.path.isfile(clientes_path) or not os.path.isfile(contratos_path):
+    if not os.path.isfile(clientes_path) or not os.path.isfile(contratos_path) or not os.path.isfile(usuarios_path):
         return jsonify({"erro": "Arquivos de exemplo não encontrados no servidor"}), 404
 
     try:
         importar_clientes_docx(clientes_path, current_app)
         importar_contratos_docx(contratos_path, current_app)
+        importar_usuarios_docx(usuarios_path, current_app)
     except Exception as e:
         return jsonify({"erro": f"Erro durante a importação: {str(e)}"}), 500
 
@@ -71,3 +74,24 @@ def importar_exemplo_contratos():
 
     ja_importado = True
     return jsonify({"mensagem": "Importação do exemplo de contratos concluída com sucesso!"})
+
+@import_bp.route("/importar-exemplo-usuarios")
+def importar_exemplo_usuarios():
+    global ja_importado
+
+    if ja_importado:
+        return jsonify({"mensagem": "Os dados já foram importados, não é possível rodar novamente."}), 403
+
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    usuarios_path = os.path.join(root_dir, "importadores/usuarios_exemplo.docx")
+
+    if not os.path.isfile(usuarios_path):
+        return jsonify({"erro": "Arquivo de exemplo de usuários não encontrado no servidor"}), 404
+
+    try:
+        importar_usuarios_docx(usuarios_path, current_app)
+    except Exception as e:
+        return jsonify({"erro": f"Erro durante a importação: {str(e)}"}), 500
+
+    ja_importado = True
+    return jsonify({"mensagem": "Importação do exemplo de usuários concluída com sucesso!"})
