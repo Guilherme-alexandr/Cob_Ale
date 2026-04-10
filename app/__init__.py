@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 import os
 from flask_jwt_extended import JWTManager
@@ -41,6 +41,13 @@ def create_app():
     @app.route("/importadores/<path:filename>")
     def custom_static(filename):
         return send_from_directory(importadores_path, filename)
+
+    @app.route("/ping", methods=["GET"])
+    def ping():
+        return jsonify({
+            "status": "online",
+            "message": "Servidor do Render acordado e pronto para uso!"
+        }), 200
 
     with app.app_context():
         db.create_all()
