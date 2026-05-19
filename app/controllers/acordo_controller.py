@@ -87,7 +87,6 @@ def listar_acordos():
 def obter_acordo(id):
     return Acordo.query.get(id)
 
-
 def obter_acordo_por_contrato(numero_contrato):
     return Acordo.query.filter_by(contrato_id=numero_contrato).first()
 
@@ -100,7 +99,6 @@ def cliente_por_acordo(status: str):
     clientes = []
 
     if status == "sem_acordo":
-        # Busca clientes que NÃO possuem nenhum acordo
         subquery = db.session.query(Acordo.contrato_id).distinct()
         contratos_sem_acordo = Contrato.query.filter(~Contrato.numero_contrato.in_(subquery)).all()
 
@@ -115,7 +113,6 @@ def cliente_por_acordo(status: str):
                 })
 
     elif status in ["em andamento", "concluido", "cancelado"]:
-        # Busca clientes que possuem acordo com o status informado
         acordos = Acordo.query.filter_by(status=status).all()
 
         for acordo in acordos:
