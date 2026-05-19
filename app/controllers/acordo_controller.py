@@ -43,26 +43,22 @@ def criar_acordo(data):
     if tipo_pagamento == "parcelado" and qtd_parcelas < 2:
         raise ValueError("Parcelamento deve ser de no mínimo 2 parcelas.")
 
-    dias_em_atraso = _calcular_dias_atraso(contrato.vencimento)
-
-    resultado_calculo = calcular({
-        "valor_original": contrato.valor_total,
-        "dias_em_atraso": dias_em_atraso,
-        "tipo_pagamento": tipo_pagamento,
-        "quantidade_parcelas": qtd_parcelas,
-        "valor_entrada": data.get("valor_entrada")
-    })
+    valor_final_enviado = float(data.get("valor_total") or data.get("valor_final") or 0.0)
+    desconto_enviado = float(data.get("desconto", 0.0))
+    juros_enviado = float(data.get("juros", 0.0))
+    
+    parcelamento_enviado = data.get("parcelamento", {})
 
     acordo = Acordo(
         contrato_id=contrato.numero_contrato,
         tipo_pagamento=tipo_pagamento,
         qtd_parcelas=qtd_parcelas,
-        valor_total=resultado_calculo["valor_final"],
-        desconto=resultado_calculo["valor_desconto"],
-        juros=resultado_calculo["juros_total"],
+        valor_total=valor_final_enviado,
+        desconto=desconto_enviado,
+        juros=juros_enviado,
         vencimento=datetime.strptime(data["vencimento"], "%Y-%m-%d"),
         status="em andamento",
-        parcelamento_json=json.dumps(resultado_calculo.get("parcelamento")) if resultado_calculo.get("parcelamento") else None
+        parcelamento_json=json.dumps(parcelamento_enviado) if parcelamento_enviado else None
     )
 
     db.session.add(acordo)
@@ -71,11 +67,15 @@ def criar_acordo(data):
     return {
         "acordo": {
             "id": acordo.id,
-            "valor_final": resultado_calculo["valor_final"],
-            "dias_em_atraso": dias_em_atraso,
-            "juros": resultado_calculo["juros_total"],
-            "desconto": resultado_calculo["valor_desconto"],
-            "parcelamento": resultado_calculo.get("parcelamento")
+            "contrato_id": acordo.contrato_id,
+            "tipo_pagamento": acordo.tipo_pagamento,
+            "qtd_parcelas": acordo.qtd_parcelas,
+            "valor_total": float(acordo.valor_total),
+            "desconto": float(acordo.desconto),
+            "juros": float(acordo.juros),
+            "vencimento": acordo.vencimento.strftime("%Y-%m-%d"),
+            "status": acordo.status,
+            "parcelamento": parcelamento_enviado
         }
     }
 
@@ -272,11 +272,81 @@ def info_boleto(acordo_id):
 def gerar_boleto(acordo_id):
     acordo = Acordo.query.get_or_404(acordo_id)
     boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
-    
+
+    # 🛠️ CORREÇÃO: Esta linha e as seguintes voltaram um nível para trás
     pasta = _pasta_boletos()
     if not os.path.exists(pasta):
         os.makedirs(pasta)
 
+    nome_arquivo = f"boleto_{acordo.id}.pdf"
+    caminho_pdf = os.path.join(pasta, nome_arquivo)
+
+    if boleto and os.path.exists(caminho_pdf):
+        current_app.logger.info(f"📄 Boleto já existente encontrado: {caminho_pdf}")
+        with open(caminho_pdf, "rb") as f:
+            pdf_bytes = f.read()
+        return pdf_bytes, nome_arquivo, boleto.id
+        
+    current_app.logger.info(f"[DEBUG] Iniciando geração de boleto para acordo_id={acordo_id}")
+
+    # ==========================================================
+    # ⚠️ MÉTODO 1: GERAÇÃO VIA DOCX (Word)
+    # ==========================================================
+    base_dir = os.path.dirname(__file__)
+    # Cuidado com caminhos absolutos no servidor (Render)
+    template_path = os.path.join(base_dir, r"C:\Users\guilh\Desktop\Meus projetos\Cob_Ale\importadores\Boleto CobAle.docx")
+    current_app.logger.info(f"🗂️ Template path usado: {template_path}")
+    doc = DocxTemplate(template_path)
+
+    caminho_img_sem_ext = info["caminho_img"].replace(".png", "")
+    ean = barcode.get("code128", info["codigo_barras"], writer=ImageWriter())
+    ean.save(caminho_img_sem_ext)
+    caminho_img_final = caminho_img_sem_ext + ".png"
+    info["caminho_img"] = caminho_img_final
+
+    if not os.path.exists(caminho_img_final):
+        raise FileNotFoundError(f"Código de barras não foi gerado: {caminho_img_final}")
+
+    info_boleto_docx = info.copy()
+    info_boleto_docx["codigo_barras_img"] = InlineImage(doc, caminho_img_final, width=Mm(80))
+
+    current_app.logger.info("📝 Renderizando DOCX...")
+    doc.render(info_boleto_docx)
+
+    temp_docx = os.path.join(base_dir, f"temp_boleto_{acordo.id}.docx")
+    doc.save(temp_docx)
+
+    try:
+        pythoncom.CoInitialize()
+        convert(temp_docx, caminho_pdf)
+        current_app.logger.info(f"✅ PDF convertido com sucesso: {caminho_pdf}")
+    except Exception as e:
+        current_app.logger.error(f"❌ Erro ao converter DOCX para PDF: {e}", exc_info=True)
+        raise
+    finally:
+        pythoncom.CoUninitialize()
+
+    if os.path.exists(temp_docx):
+        os.remove(temp_docx)
+    if os.path.exists(caminho_img_final):
+        os.remove(caminho_img_final)
+
+    if not boleto:
+        boleto = Boleto(
+            acordo_id=acordo.id,
+            nome_arquivo=nome_arquivo,
+            criado_em=datetime.utcnow(),
+            enviado=False
+        )
+        db.session.add(boleto)
+    else:
+        boleto.nome_arquivo = nome_arquivo
+        boleto.criado_em = datetime.utcnow()
+
+    # ==========================================================
+    # ⚠️ MÉTODO 2: GERAÇÃO VIA HTML (Weasyprint/pdfkit)
+    # Aqui o código repete definições de variáveis já criadas acima
+    # ==========================================================
     nome_arquivo = f"boleto_{acordo.id}.pdf"
     caminho_pdf = os.path.join(pasta, nome_arquivo)
 
@@ -345,46 +415,7 @@ def gerar_boleto(acordo_id):
         print(f"Erro ao salvar boleto no banco: {e}")
         raise
 
-    return pdf, nome_arquivo
-
-
-def enviar_boleto(acordo_id):
-    acordo = Acordo.query.get_or_404(acordo_id)
-
-    contrato = Contrato.query.get(acordo.contrato_id)
-    if not contrato:
-        raise ValueError("Contrato não encontrado.")
-
-    cliente = Cliente.query.get(contrato.cliente_id)
-    if not cliente or not cliente.email:
-        raise ValueError("Cliente não encontrado ou sem e-mail cadastrado.")
-
-    pasta = _pasta_boletos()
-    nome_arquivo = f"boleto_{acordo.id}.pdf"
-    caminho_pdf = os.path.join(pasta, nome_arquivo)
-
-    if not os.path.exists(caminho_pdf):
-        print(f"[INFO] Boleto não encontrado em disco, gerando novamente: {caminho_pdf}")
-        gerar_boleto(acordo.id)
-
-    if not os.path.exists(caminho_pdf):
-        raise FileNotFoundError(f"Boleto não encontrado nem gerado: {caminho_pdf}")
-
-    try:
-        boletos.enviar_boleto_email(cliente.email, caminho_pdf)
-    except Exception as e:
-        raise RuntimeError(f"Erro ao enviar o e-mail: {e}")
-
-    boleto = Boleto.query.filter_by(acordo_id=acordo.id).first()
-    if boleto:
-        boleto.enviado = True
-        db.session.commit()
-
-    return {
-        "mensagem": f"Boleto enviado com sucesso para {cliente.email}",
-        "acordo_id": acordo.id,
-        "arquivo": nome_arquivo,
-    }
+    return pdf, nome_arquivo, boleto.id
 
 
 def listar_boletos_por_pasta(acordo_id):
