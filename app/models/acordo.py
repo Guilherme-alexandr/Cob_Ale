@@ -20,6 +20,14 @@ class Acordo(db.Model):
     contrato = db.relationship("Contrato", backref=db.backref("acordos", lazy=True))
 
     def to_dict(self, include_boletos=False):
+        import json
+        parcelamento_dict = {}
+        if self.parcelamento_json:
+            try:
+                parcelamento_dict = json.loads(self.parcelamento_json)
+            except Exception:
+                parcelamento_dict = {}
+
         data = {
             "id": self.id,
             "contrato_id": self.contrato_id,
@@ -31,6 +39,7 @@ class Acordo(db.Model):
             "vencimento": self.vencimento.strftime("%Y-%m-%d"),
             "status": self.status,
             "data_criacao": self.data_criacao.strftime("%Y-%m-%d %H:%M:%S"),
+            "parcelamento": parcelamento_dict,
         }
         if include_boletos:
             data["boletos"] = [boleto.to_dict() for boleto in self.boletos]
