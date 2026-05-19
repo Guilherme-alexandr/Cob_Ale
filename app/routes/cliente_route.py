@@ -46,7 +46,7 @@ def rota_deletar_cliente(id):
     return jsonify(resultado), 200
 
 @cliente_bp.route('/login', methods=['POST'])
-def rota_login():
+def cliente_login():
     data = request.get_json()
-    resultado, status = login_cliente(data)
-    return jsonify(resultado), status
+    response, status = login_cliente(data)
+    return jsonify(response), status
